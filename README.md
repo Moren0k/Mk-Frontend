@@ -1,29 +1,26 @@
 # Mk-Frontend
 
-This template should help get you started developing with Vue 3 in Vite.
+Frontend de **MKBACBO**: dashboard oscuro de monitoreo de baccarat construido con Vue 3, TypeScript, Vite y Tailwind CSS. Sin backend: todos los datos son mock y la app se ejecuta de forma independiente.
 
-## Recommended IDE Setup
+## Rutas
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+- `/` — Dashboard MKBACBO
+- `/legacy` — Dashboard previo en desarrollo
 
-## Recommended Browser Setup
+## Estructura de MKBACBO
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
-
-## Type Support for `.vue` Imports in TS
-
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vite.dev/config/).
+- `src/views/BacboproDashboard.vue` — layout 12 columnas (main 9 / aside 3)
+- `src/components/bacbopro/` — componentes (Header, StatusBadge, ToggleCard, KpiGrid, StreakBoard/StreakColumn, HistoryPanel/HistoryGrid, StatsBar, LastWinnerCard/WinnerIndicator, OperationCard)
+- `src/mocks/bacbopro/` — datos mock (resultsData compartido por Tablero de Rachas e Historial, historyData, kpiData, operationData, winnerData)
+- `src/assets/images/` — logos de la app (MKBACBO_LOGO, MKBACBO_PRUEBA, MKBACBO_OFICIAL)
 
 ## Project Setup
+
+```sh
+npm install
+```
+
+o con pnpm:
 
 ```sh
 pnpm install
@@ -32,17 +29,51 @@ pnpm install
 ### Compile and Hot-Reload for Development
 
 ```sh
-pnpm dev
+npm run dev
 ```
 
 ### Type-Check, Compile and Minify for Production
 
 ```sh
-pnpm build
+npm run build
 ```
 
 ### Lint with [ESLint](https://eslint.org/)
 
 ```sh
-pnpm lint
+npm run lint
+```
+
+### Comprobar que no existen dependencias de backend
+
+```sh
+npm run check:no-backend
+```
+
+### Tests unitarios con [Vitest](https://vitest.dev/)
+
+```sh
+# Ejecutar una vez (CI)
+npm test
+
+# Modo watch durante el desarrollo
+npm run test:watch
+
+# Ejecutar con reporte de cobertura
+npm run test:coverage
+```
+
+Los tests viven en `src/__tests__/` y cubren: `BacboproDashboard` (mount), `buildStreakColumns`/`historyGrid`, `dashboardMapper`/`useStats`, `dashboardStore` (Pinia) y `gameGenerator`.
+
+## Checklist pre-commit
+
+Ejecutar en este orden antes de commitear:
+
+```sh
+npm run check:no-backend   # sin dependencias de backend
+npm run lint               # oxlint + eslint con autofix
+npm run type-check         # vue-tsc
+npm test                   # vitest (53 tests)
+npm run test:coverage      # cobertura
+npm run build              # type-check + build de producción
 ```

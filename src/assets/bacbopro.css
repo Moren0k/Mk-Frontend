@@ -1,0 +1,59 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-bbp-bg: #000000;
+  --color-bbp-panel: #0c0c0c;
+  --color-bbp-border: #1a1a1a;
+  --color-bbp-border-strong: #262626;
+  --color-bbp-player: #1e88e5;
+  --color-bbp-banker: #e53935;
+  --color-bbp-tie: #fbc02d;
+  --color-bbp-active: #00e676;
+
+  --font-sans:
+    'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+  --font-mono:
+    ui-monospace, 'SF Mono', 'Cascadia Mono', 'Segoe UI Mono', Menlo, Consolas, 'Liberation Mono',
+    monospace;
+}
+
+html,
+body {
+  background: #000000;
+}
+
+@keyframes bbp-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgba(0, 230, 118, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 230, 118, 0);
+  }
+}
+
+.bbp-pulse {
+  animation: bbp-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.bbp-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #1a1a1a transparent;
+}
+
+.bbp-scroll::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+.bbp-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.bbp-scroll::-webkit-scrollbar-thumb {
+  background: #1a1a1a;
+  border-radius: 3px;
+}
