@@ -25,7 +25,7 @@ const current = computed(() => winnerConfig[props.winner])
   >
     <span
       class="inline-block h-20 w-20 rounded-full sm:h-24 sm:w-24"
-      :style="{ backgroundColor: current.color, boxShadow: `0 0 18px ${current.color}59` }"
+      :style="{ backgroundColor: current.color, boxShadow: `0 0 1.125rem ${current.color}59` }"
     />
     <span class="text-xl font-bold tracking-[0.2em]" :style="{ color: current.color }">
       {{ current.label }}

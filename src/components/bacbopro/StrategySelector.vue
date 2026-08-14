@@ -101,7 +101,7 @@ function confirmChange(): void {
       class="mt-2 flex w-full min-w-0 flex-wrap items-center justify-between gap-2 rounded-md border border-bbp-border bg-bbp-bg/60 px-2.5 py-2"
     >
       <span
-        class="flex items-center gap-1.5 whitespace-nowrap text-[10px] font-semibold tracking-wider text-bbp-tie"
+        class="flex items-center gap-1.5 whitespace-nowrap text-[0.625rem] font-semibold tracking-wider text-bbp-tie"
       >
         <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-bbp-tie" aria-hidden="true" />
         CAMBIO PENDIENTE
@@ -109,14 +109,14 @@ function confirmChange(): void {
       <div class="flex items-center gap-1.5">
         <button
           type="button"
-          class="rounded border border-bbp-active/40 bg-bbp-active/10 px-2.5 py-1 text-[11px] font-bold tracking-wider text-bbp-active transition-colors duration-200 hover:bg-bbp-active/20"
+          class="rounded border border-bbp-active/40 bg-bbp-active/10 px-2.5 py-1 text-[0.6875rem] font-bold tracking-wider text-bbp-active transition-colors duration-200 hover:bg-bbp-active/20"
           @click="requestSave"
         >
           GUARDAR
         </button>
         <button
           type="button"
-          class="rounded border border-bbp-border bg-bbp-bg/40 px-2.5 py-1 text-[11px] font-bold tracking-wider text-gray-400 transition-colors duration-200 hover:bg-bbp-bg"
+          class="rounded border border-bbp-border bg-bbp-bg/40 px-2.5 py-1 text-[0.6875rem] font-bold tracking-wider text-gray-400 transition-colors duration-200 hover:bg-bbp-bg"
           @click="cancelPending"
         >
           CANCELAR
@@ -130,7 +130,7 @@ function confirmChange(): void {
       aria-label="Confirmar cambio de estrategia"
       class="mt-2 w-full min-w-0 rounded-md border border-bbp-border-strong bg-bbp-bg/60 p-3"
     >
-      <p class="text-center text-[11px] font-bold tracking-[0.15em] text-bbp-tie">
+      <p class="text-center text-[0.6875rem] font-bold tracking-[0.15em] text-bbp-tie">
         ¿CONFIRMAR CAMBIO DE ESTRATEGIA?
       </p>
       <p class="mt-1 text-center text-xs font-semibold text-gray-300">
@@ -139,14 +139,14 @@ function confirmChange(): void {
       <div class="mt-2 grid grid-cols-2 gap-2">
         <button
           type="button"
-          class="rounded border border-bbp-border bg-bbp-bg/40 px-2.5 py-1 text-[11px] font-bold tracking-wider text-gray-400 transition-colors duration-200 hover:bg-bbp-bg"
+          class="rounded border border-bbp-border bg-bbp-bg/40 px-2.5 py-1 text-[0.6875rem] font-bold tracking-wider text-gray-400 transition-colors duration-200 hover:bg-bbp-bg"
           @click="cancelPending"
         >
           CANCELAR
         </button>
         <button
           type="button"
-          class="rounded border border-bbp-active/40 bg-bbp-active/10 px-2.5 py-1 text-[11px] font-bold tracking-wider text-bbp-active transition-colors duration-200 hover:bg-bbp-active/20"
+          class="rounded border border-bbp-active/40 bg-bbp-active/10 px-2.5 py-1 text-[0.6875rem] font-bold tracking-wider text-bbp-active transition-colors duration-200 hover:bg-bbp-active/20"
           @click="confirmChange"
         >
           CONFIRMAR

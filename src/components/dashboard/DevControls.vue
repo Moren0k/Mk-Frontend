@@ -47,18 +47,18 @@ const OPERATION_STATES: OperationState[] = ['MG1', 'MG2', 'EP', 'WAITING', 'WIN'
 .dev-controls {
   background: var(--color-surface-dark);
   border: 1px solid var(--color-dev-border, #334155);
-  border-radius: 8px;
-  padding: 8px 12px;
-  margin: 16px 16px 0;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  margin: 1rem 1rem 0;
 }
 
 .dev-controls__toggle {
   background: transparent;
   border: 1px dashed var(--color-waiting);
   color: var(--color-waiting);
-  padding: 4px 12px;
-  border-radius: 4px;
-  font-size: 11px;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.25rem;
+  font-size: 0.6875rem;
   cursor: pointer;
   width: 100%;
 }
@@ -68,20 +68,20 @@ const OPERATION_STATES: OperationState[] = ['MG1', 'MG2', 'EP', 'WAITING', 'WIN'
 }
 
 .dev-controls__panel {
-  margin-top: 12px;
+  margin-top: 0.75rem;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0.75rem;
 }
 
 .dev-controls__group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0.375rem;
 }
 
 .dev-controls__group-title {
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 600;
   color: var(--color-text-muted);
   text-transform: uppercase;
@@ -92,7 +92,7 @@ const OPERATION_STATES: OperationState[] = ['MG1', 'MG2', 'EP', 'WAITING', 'WIN'
 .dev-controls__row {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 0.25rem;
   align-items: center;
 }
 
@@ -100,9 +100,9 @@ const OPERATION_STATES: OperationState[] = ['MG1', 'MG2', 'EP', 'WAITING', 'WIN'
   background: var(--color-bg);
   border: 1px solid var(--color-border);
   color: var(--color-text-primary);
-  padding: 4px 10px;
-  border-radius: 4px;
-  font-size: 11px;
+  padding: 0.25rem 0.625rem;
+  border-radius: 0.25rem;
+  font-size: 0.6875rem;
   cursor: pointer;
   transition: background 0.2s;
 }
@@ -118,7 +118,7 @@ const OPERATION_STATES: OperationState[] = ['MG1', 'MG2', 'EP', 'WAITING', 'WIN'
 
 @media (max-width: 480px) {
   .dev-controls {
-    margin: 12px 8px 0;
+    margin: 0.75rem 0.5rem 0;
   }
 }
 </style>

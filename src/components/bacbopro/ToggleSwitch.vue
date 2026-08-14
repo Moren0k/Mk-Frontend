@@ -27,7 +27,7 @@ const switchLabel = props.label ?? 'Interruptor'
   >
     <span
       class="inline-block h-6 w-6 rounded-full bg-white shadow transition-transform duration-200"
-      :class="model ? 'translate-x-[29px]' : 'translate-x-[3px]'"
+      :class="model ? 'translate-x-[1.8125rem]' : 'translate-x-[0.1875rem]'"
       aria-hidden="true"
     />
   </button>

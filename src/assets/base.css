@@ -1,3 +1,7 @@
+html {
+  font-size: clamp(14px, 0.5vw + 12.4px, 22px);
+}
+
 :root {
   --color-player: #3b82f6;
   --color-banker: #ef4444;
@@ -39,7 +43,7 @@ body {
     Ubuntu,
     Cantarell,
     sans-serif;
-  font-size: 15px;
+  font-size: 1rem;
   line-height: 1.6;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;

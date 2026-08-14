@@ -14,7 +14,7 @@ defineProps<Props>()
       <div
         v-for="segment in segments"
         :key="segment.label"
-        class="overflow-hidden whitespace-nowrap text-center text-[10px] font-semibold tracking-wider"
+        class="overflow-hidden whitespace-nowrap text-center text-[0.625rem] font-semibold tracking-wider"
         :class="{
           'text-bbp-player': segment.outcome === 'player',
           'text-bbp-tie': segment.outcome === 'tie',
@@ -45,7 +45,7 @@ defineProps<Props>()
       <div
         v-for="segment in segments"
         :key="segment.label"
-        class="overflow-hidden whitespace-nowrap text-center font-mono text-[11px] text-gray-300"
+        class="overflow-hidden whitespace-nowrap text-center font-mono text-[0.6875rem] text-gray-300"
         :style="{ width: `${segment.percentage}%` }"
       >
         {{ segment.percentage }}%

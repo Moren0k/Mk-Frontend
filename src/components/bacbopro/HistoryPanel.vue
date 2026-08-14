@@ -21,7 +21,7 @@ defineProps<Props>()
     </h2>
 
     <div
-      class="mt-4 grid grid-cols-1 items-center gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(260px,1fr)] lg:gap-8 xl:gap-10"
+      class="mt-4 grid grid-cols-1 items-center gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:gap-8 xl:gap-10"
     >
       <div class="min-w-0 lg:justify-self-center">
         <HistoryGrid :grid="grid" />

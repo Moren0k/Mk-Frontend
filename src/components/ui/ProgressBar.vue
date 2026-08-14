@@ -22,26 +22,28 @@ defineProps<{
 .progress-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0.5rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .progress-bar__track {
   flex: 1;
-  height: 6px;
+  height: 0.375rem;
   background: var(--color-surface-dark);
-  border-radius: 3px;
+  border-radius: 0.1875rem;
   overflow: hidden;
 }
 
 .progress-bar__fill {
   height: 100%;
   background: var(--color-ep);
-  border-radius: 3px;
+  border-radius: 0.1875rem;
   transition: width 0.3s ease;
 }
 
 .progress-bar__label {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--color-text-muted);
   white-space: nowrap;
 }

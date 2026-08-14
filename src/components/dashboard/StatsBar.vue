@@ -77,44 +77,46 @@ const b50 = computed(() => store.statsLast50Sync.bankerPercentage)
 <style scoped>
 .stats-bar {
   display: flex;
-  gap: 24px;
+  gap: 1.5rem;
 }
 
 .stats-bar__group {
   flex: 1;
+  min-width: 0;
   background: var(--color-surface-dark);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 14px;
+  border-radius: 0.5rem;
+  padding: 0.875rem;
 }
 
 .stats-bar__group-title {
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 1px;
-  margin: 0 0 10px;
+  letter-spacing: 0.0625rem;
+  margin: 0 0 0.625rem;
 }
 
 .stats-bar__items {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0.375rem;
 }
 
 .stats-bar__item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0.5rem;
 }
 
 .stats-bar__label {
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 700;
-  width: 18px;
+  width: 1.125rem;
   text-align: center;
   font-family: monospace;
+  flex-shrink: 0;
 }
 
 .stats-bar__item--player .stats-bar__label {
@@ -131,15 +133,15 @@ const b50 = computed(() => store.statsLast50Sync.bankerPercentage)
 
 .stats-bar__bar {
   flex: 1;
-  height: 8px;
+  height: 0.5rem;
   background: var(--color-bg);
-  border-radius: 4px;
+  border-radius: 0.25rem;
   overflow: hidden;
 }
 
 .stats-bar__fill {
   height: 100%;
-  border-radius: 4px;
+  border-radius: 0.25rem;
   transition: width 0.3s ease;
 }
 
@@ -156,18 +158,19 @@ const b50 = computed(() => store.statsLast50Sync.bankerPercentage)
 }
 
 .stats-bar__value {
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--color-text-primary);
-  min-width: 45px;
+  min-width: 2.8125rem;
   text-align: right;
   font-family: monospace;
+  flex-shrink: 0;
 }
 
 @media (max-width: 768px) {
   .stats-bar {
     flex-direction: column;
-    gap: 12px;
+    gap: 0.75rem;
   }
 }
 </style>

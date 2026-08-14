@@ -15,12 +15,13 @@ defineProps<{
 <style scoped>
 .status-badge {
   display: inline-block;
-  padding: 2px 10px;
-  border-radius: 12px;
-  font-size: 12px;
+  padding: 0.125rem 0.625rem;
+  border-radius: 0.75rem;
+  font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  white-space: nowrap;
 }
 
 .status-badge--win {

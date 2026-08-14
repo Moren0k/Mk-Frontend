@@ -45,35 +45,38 @@ import DevControls from '@/components/dashboard/DevControls.vue'
 
 .dashboard__body {
   display: grid;
-  grid-template-columns: 280px 1fr 280px;
-  gap: 16px;
-  padding: 16px;
+  grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.5fr) minmax(0, 0.75fr);
+  gap: 1rem;
+  padding: 1rem;
   flex: 1;
 }
 
 .dashboard__sidebar {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0.75rem;
+  min-width: 0;
 }
 
 .dashboard__center {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0.75rem;
+  min-width: 0;
 }
 
 .dashboard__right {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0.75rem;
+  min-width: 0;
 }
 
 .dashboard__games {
-  padding: 0 16px 16px;
+  padding: 0 1rem 1rem;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1200px) {
   .dashboard__body {
     grid-template-columns: 1fr 1fr;
   }
@@ -82,15 +85,15 @@ import DevControls from '@/components/dashboard/DevControls.vue'
     grid-column: 1 / -1;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 12px;
+    gap: 0.75rem;
   }
 }
 
 @media (max-width: 768px) {
   .dashboard__body {
     grid-template-columns: 1fr;
-    gap: 10px;
-    padding: 10px;
+    gap: 0.625rem;
+    padding: 0.625rem;
   }
 
   .dashboard__right {
@@ -100,44 +103,18 @@ import DevControls from '@/components/dashboard/DevControls.vue'
   }
 
   .dashboard__games {
-    padding: 0 10px 10px;
+    padding: 0 0.625rem 0.625rem;
   }
 }
 
 @media (max-width: 480px) {
   .dashboard__body {
-    gap: 8px;
-    padding: 8px;
+    gap: 0.5rem;
+    padding: 0.5rem;
   }
 
   .dashboard__games {
-    padding: 0 8px 8px;
-  }
-}
-
-@media (min-width: 1440px) {
-  .dashboard__body {
-    grid-template-columns: 300px 1fr 300px;
-    padding: 24px;
-    gap: 20px;
-  }
-
-  .dashboard__games {
-    padding: 0 24px 24px;
-  }
-}
-
-@media (min-width: 1920px) {
-  .dashboard__body {
-    width: 100%;
-    max-width: 1800px;
-    margin: 0 auto;
-  }
-
-  .dashboard__games {
-    width: 100%;
-    max-width: 1800px;
-    margin: 0 auto;
+    padding: 0 0.5rem 0.5rem;
   }
 }
 </style>

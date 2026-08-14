@@ -6,7 +6,7 @@ import logoUrl from '@/assets/images/MKBACBO_LOGO.png'
 <template>
   <header class="sticky top-0 z-20 border-b border-bbp-border bg-bbp-bg">
     <div
-      class="mx-auto flex w-full max-w-[1600px] flex-wrap items-center justify-between gap-x-6 gap-y-2 px-3 py-3.5 max-[400px]:gap-x-3 sm:px-6 sm:py-4"
+      class="mx-auto flex w-full flex-wrap items-center justify-between gap-x-6 gap-y-2 py-3.5 max-[400px]:gap-x-3 sm:py-4"
     >
       <div class="flex min-w-0 items-center gap-3">
         <span

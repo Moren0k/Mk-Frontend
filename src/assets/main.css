@@ -9,7 +9,9 @@ body {
 #app {
   display: flex;
   flex-direction: column;
-  width: 100%;
+  width: 80%;
+  max-width: none;
+  margin: 0 auto;
   min-height: 100vh;
   min-height: 100dvh;
   background: #000000;

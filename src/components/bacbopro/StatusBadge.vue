@@ -9,7 +9,7 @@ defineProps<Props>()
 
 <template>
   <span
-    class="inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-wider sm:px-3 sm:text-[11px]"
+    class="inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-2.5 py-1 text-[0.625rem] font-semibold tracking-wider sm:px-3 sm:text-[0.6875rem]"
     :class="
       variant === 'sync'
         ? 'border-bbp-border bg-bbp-bg text-gray-300'

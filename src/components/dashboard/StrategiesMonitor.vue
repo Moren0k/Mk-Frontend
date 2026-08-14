@@ -37,17 +37,17 @@ const store = useDashboardStore()
 .strategies-monitor {
   background: var(--color-surface-dark);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 16px;
+  border-radius: 0.5rem;
+  padding: 1rem;
 }
 
 .strategies-monitor__title {
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
   color: var(--color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 1px;
-  margin: 0 0 12px;
+  letter-spacing: 0.0625rem;
+  margin: 0 0 0.75rem;
 }
 
 .strategies-monitor__list {
@@ -56,15 +56,15 @@ const store = useDashboardStore()
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0.5rem;
 }
 
 .strategies-monitor__item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 10px;
-  border-radius: 6px;
+  padding: 0.5rem 0.625rem;
+  border-radius: 0.375rem;
   background: var(--color-bg);
 }
 
@@ -75,13 +75,15 @@ const store = useDashboardStore()
 .strategies-monitor__info {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0.5rem;
+  min-width: 0;
 }
 
 .strategies-monitor__dot {
-  width: 8px;
-  height: 8px;
+  width: 0.5rem;
+  height: 0.5rem;
   border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .strategies-monitor__dot--active {
@@ -93,18 +95,22 @@ const store = useDashboardStore()
 }
 
 .strategies-monitor__name {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .strategies-monitor__meta {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0.5rem;
+  flex-shrink: 0;
 }
 
 .strategies-monitor__score {
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
   color: var(--color-ep);
   font-family: monospace;
@@ -114,9 +120,9 @@ const store = useDashboardStore()
   background: var(--color-border);
   border: none;
   color: var(--color-text-primary);
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 10px;
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.625rem;
   font-weight: 700;
   cursor: pointer;
   transition: background 0.2s;

@@ -29,13 +29,13 @@ const store = useDashboardStore()
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 20px;
+  padding: 0.75rem 1.25rem;
   background: var(--color-surface-dark);
   border-bottom: 1px solid var(--color-border);
 }
 
 .header-status__title {
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 600;
   color: var(--color-text-primary);
   margin: 0;
@@ -44,24 +44,24 @@ const store = useDashboardStore()
 .header-status__right {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 1.25rem;
 }
 
 .header-status__indicator {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 0.375rem;
 }
 
 .header-status__dot {
-  width: 8px;
-  height: 8px;
+  width: 0.5rem;
+  height: 0.5rem;
   border-radius: 50%;
 }
 
 .header-status__dot--connected {
   background: var(--color-win);
-  box-shadow: 0 0 6px var(--color-win);
+  box-shadow: 0 0 0.375rem var(--color-win);
   animation: pulse 2s infinite;
 }
 
@@ -70,12 +70,12 @@ const store = useDashboardStore()
 }
 
 .header-status__label {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--color-text-muted);
 }
 
 .header-status__time {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--color-text-muted);
   font-family: monospace;
 }
@@ -88,22 +88,22 @@ const store = useDashboardStore()
 @media (max-width: 480px) {
   .header-status {
     flex-wrap: wrap;
-    gap: 8px;
-    padding: 10px 12px;
+    gap: 0.5rem;
+    padding: 0.625rem 0.75rem;
   }
 
   .header-status__title {
-    font-size: 15px;
+    font-size: 0.9375rem;
   }
 
   .header-status__right {
-    gap: 12px;
+    gap: 0.75rem;
     width: 100%;
     justify-content: space-between;
   }
 
   .header-status__time {
-    font-size: 12px;
+    font-size: 0.75rem;
   }
 }
 </style>

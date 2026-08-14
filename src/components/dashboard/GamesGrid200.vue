@@ -27,28 +27,28 @@ const store = useDashboardStore()
 .games-grid {
   background: var(--color-surface-dark);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 16px;
+  border-radius: 0.5rem;
+  padding: 1rem;
 }
 
 .games-grid__title {
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
   color: var(--color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 1px;
-  margin: 0 0 12px;
+  letter-spacing: 0.0625rem;
+  margin: 0 0 0.75rem;
 }
 
 .games-grid__container {
   overflow-x: auto;
-  padding-bottom: 4px;
+  padding-bottom: 0.25rem;
 }
 
 .games-grid__scroll {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 0.25rem;
   min-width: min-content;
 }
 </style>
