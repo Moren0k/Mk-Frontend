@@ -12,6 +12,7 @@ Backlog de tareas pendientes y completadas del proyecto.
 
 ## Completadas
 
+- [x] [2026-08-14] Front responsive en cualquier pantalla con márgenes y layout 100vh (ambos dashboards)
 - [x] [2026-08-12] Dashboards MKBACBO y Baccarat con mocks y sin backend
 - [x] [2026-08-12] Suite de tests Vitest (53 tests)
 - [x] [2026-08-12] Script `check:no-backend` y gates de calidad documentados en README

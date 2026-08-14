@@ -9,7 +9,7 @@ defineProps<Props>()
 </script>
 
 <template>
-  <div class="rounded-lg border border-bbp-border bg-bbp-panel p-4">
+  <div class="rounded-lg border border-bbp-border bg-bbp-panel p-3 sm:p-4">
     <p class="text-xs font-bold tracking-[0.15em] text-gray-400">{{ item.label }}</p>
     <p
       class="mt-1.5 text-2xl font-bold"

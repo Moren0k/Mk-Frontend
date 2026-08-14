@@ -28,10 +28,10 @@ const statsBlocks = [statsLast200, statsLast100]
 </script>
 
 <template>
-  <div class="min-h-screen bg-bbp-bg font-sans text-gray-100">
+  <div class="flex min-h-screen flex-col bg-bbp-bg font-sans text-gray-100">
     <BacboproHeader />
     <main
-      class="mx-auto grid w-full max-w-[1600px] grid-cols-1 items-start gap-4 px-4 py-3 sm:px-6 sm:py-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.38fr)] lg:gap-5"
+      class="mx-auto grid w-full max-w-[1600px] flex-1 grid-cols-1 items-start gap-4 px-3 py-4 pb-6 sm:px-6 sm:py-5 sm:pb-8 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.38fr)] lg:gap-5"
     >
       <KpiGrid
         class="min-w-0 lg:col-start-1 lg:row-start-1"

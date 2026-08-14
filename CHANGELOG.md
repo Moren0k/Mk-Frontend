@@ -2,6 +2,14 @@
 
 Todas las cambios notables de este proyecto se documentan en este archivo. Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [2026-08-14]
+
+### Mejorado
+- Layout full-height global: `html/body` al 100% y `#app` con `min-height: 100vh/100dvh` en columna flex
+- Responsive en cualquier pantalla del dashboard MKBACBO (`/`): paddings y gaps móviles en KpiCard/KpiGrid, StreakBoard, HistoryPanel y header adaptado a <400px
+- Margen inferior consistente en el `main` de `BacboproDashboard` (`pb-6`/`pb-8`)
+- Dashboard legacy (`/legacy`): breakpoints 480px y 1920px (centrado ultra-wide), `HeaderStatus` con wrap en <480px y `DevControls` con márgenes horizontales
+
 ## [2026-08-12]
 
 ### Añadido

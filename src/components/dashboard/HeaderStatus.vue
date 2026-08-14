@@ -84,4 +84,26 @@ const store = useDashboardStore()
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
 }
+
+@media (max-width: 480px) {
+  .header-status {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .header-status__title {
+    font-size: 15px;
+  }
+
+  .header-status__right {
+    gap: 12px;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .header-status__time {
+    font-size: 12px;
+  }
+}
 </style>

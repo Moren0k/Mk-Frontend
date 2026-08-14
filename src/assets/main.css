@@ -1,8 +1,16 @@
 @import './base.css';
 @import './bacbopro.css';
 
+html,
+body {
+  height: 100%;
+}
+
 #app {
+  display: flex;
+  flex-direction: column;
   width: 100%;
   min-height: 100vh;
+  min-height: 100dvh;
   background: #000000;
 }

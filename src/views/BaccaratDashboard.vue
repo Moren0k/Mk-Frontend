@@ -37,6 +37,7 @@ import DevControls from '@/components/dashboard/DevControls.vue'
 <style scoped>
 .dashboard {
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--color-bg);
   display: flex;
   flex-direction: column;
@@ -103,6 +104,17 @@ import DevControls from '@/components/dashboard/DevControls.vue'
   }
 }
 
+@media (max-width: 480px) {
+  .dashboard__body {
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .dashboard__games {
+    padding: 0 8px 8px;
+  }
+}
+
 @media (min-width: 1440px) {
   .dashboard__body {
     grid-template-columns: 300px 1fr 300px;
@@ -112,6 +124,20 @@ import DevControls from '@/components/dashboard/DevControls.vue'
 
   .dashboard__games {
     padding: 0 24px 24px;
+  }
+}
+
+@media (min-width: 1920px) {
+  .dashboard__body {
+    width: 100%;
+    max-width: 1800px;
+    margin: 0 auto;
+  }
+
+  .dashboard__games {
+    width: 100%;
+    max-width: 1800px;
+    margin: 0 auto;
   }
 }
 </style>

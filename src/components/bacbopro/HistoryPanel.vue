@@ -14,7 +14,7 @@ defineProps<Props>()
 <template>
   <section
     aria-label="Últimas jugadas"
-    class="w-full min-w-0 rounded-lg border border-bbp-border bg-bbp-panel p-4"
+    class="w-full min-w-0 rounded-lg border border-bbp-border bg-bbp-panel p-3 sm:p-4"
   >
     <h2 class="text-center text-lg font-bold tracking-[0.15em] text-gray-300">
       ÚLTIMAS JUGADAS

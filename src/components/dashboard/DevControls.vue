@@ -49,7 +49,7 @@ const OPERATION_STATES: OperationState[] = ['MG1', 'MG2', 'EP', 'WAITING', 'WIN'
   border: 1px solid var(--color-dev-border, #334155);
   border-radius: 8px;
   padding: 8px 12px;
-  margin-top: 16px;
+  margin: 16px 16px 0;
 }
 
 .dev-controls__toggle {
@@ -114,5 +114,11 @@ const OPERATION_STATES: OperationState[] = ['MG1', 'MG2', 'EP', 'WAITING', 'WIN'
 .dev-controls__btn--active {
   border-color: var(--color-ep);
   color: var(--color-ep);
+}
+
+@media (max-width: 480px) {
+  .dev-controls {
+    margin: 12px 8px 0;
+  }
 }
 </style>
