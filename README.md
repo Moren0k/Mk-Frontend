@@ -12,7 +12,9 @@ Frontend de **MKBACBO**: dashboard oscuro de monitoreo de baccarat construido co
 Copiar `.env.example` a `.env` (no versionado) y completar:
 
 - `VITE_API_BASE_URL` — base de la API, p. ej. `http://localhost:3000/api/v1`
-- `VITE_API_KEY` — valor del header `X-Api-Key` (secreto compartido del backend)
+- `VITE_API_KEY` — **solo conveniencia en `pnpm dev` local**, para no tener que loguearse cada vez. Nunca definir en el entorno de un build de producción (aunque se defina por error, Vite elimina esa rama del código en `pnpm build` — ver `src/api/config.ts`).
+
+El panel (`AccessGate`) pide una contraseña y la valida contra el backend (`POST /auth/login`, ver `documentacion_mk_api.md` §4.12 del backend): si acierta, recibe ahí mismo la API key real para el resto de la sesión (en memoria/`sessionStorage`, ver `src/api/session.ts`). Ni la contraseña ni la API key quedan nunca incrustadas en el JS compilado — la contraseña (`ACCESS_PASSWORD`) se configura en el `.env` del **backend**, no en este proyecto.
 
 ## Estructura de MKBACBO
 

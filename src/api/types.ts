@@ -131,6 +131,10 @@ export interface StrategyCatalogItem {
   description: string
 }
 
+export interface LoginResult {
+  apiKey: string
+}
+
 export interface GameReceivedPayload {
   roundId: string
   winner: Winner

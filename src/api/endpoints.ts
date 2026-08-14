@@ -7,6 +7,7 @@ import type {
   HealthData,
   HistoryItem,
   HistoryMeta,
+  LoginResult,
   OperationVm,
   PatchChannelBody,
   ReportSummary,
@@ -19,6 +20,21 @@ import { startEventsStream } from './sse'
 
 export function getHealth(): Promise<Envelope<HealthData>> {
   return apiRequest<HealthData>({ path: '/health', auth: false })
+}
+
+/**
+ * POST /auth/login — Login Gateway del panel (AccessGate): manda la
+ * contraseña ingresada por el usuario y, si el backend la valida, recibe
+ * la API key real para usar el resto de la sesión. `auth: false` porque
+ * en este punto el cliente todavía no tiene ninguna key que mandar.
+ */
+export function login(password: string): Promise<Envelope<LoginResult>> {
+  return apiRequest<LoginResult>({
+    path: '/auth/login',
+    method: 'POST',
+    body: { password },
+    auth: false,
+  })
 }
 
 export function getStatistics(): Promise<Envelope<StatisticsData>> {
