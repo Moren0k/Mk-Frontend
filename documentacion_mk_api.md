@@ -6,8 +6,9 @@
 
 ## 1. Lo esencial en 30 segundos
 
-- **Base URL:** `http://<host>:<port>/api/v1` (todo bajo este prefijo, salvo dos rutas legadas — ver §8).
+- **Base URL:** `http://<host>:<port>/api/v1` (todo bajo este prefijo, salvo `GET /healthz` — ver §8). Puerto default `3000` (`PORT` en `.env`).
 - **Auth:** header `X-Api-Key: <secreto>` en **todo** endpoint, salvo `GET /api/v1/health`. Sin login, sin JWT, sin roles: un único secreto compartido para el frontend propio.
+- **CORS:** abierto a cualquier origen mientras el proyecto está en desarrollo (`app.enableCors({ origin: true, ... })` en `main.ts`) — un frontend en otro dominio/puerto puede llamar directo desde el navegador sin configuración adicional. Se va a restringir a una allowlist de dominios antes de producción.
 - **Formato de respuesta:** siempre JSON, siempre el mismo sobre (`{ data, meta?, requestId }` o `{ error }`) — ver §2.
 - **Nada de esto habla con Tipminer/Telegram/Prisma directo**: todo pasa por casos de uso ya existentes en `application/`.
 - **⚠️ El motor arranca completamente apagado:** las 2 estrategias existen en código (`streak-3`, `streak-4` — ver `GET /api/v1/strategies`, §4.11) pero **ninguna corre** hasta que se le asigne un canal y ese canal se active vía `PATCH /api/v1/channels/:channel` (§4.7). Un reinicio del proceso vuelve a apagar todo (no hay persistencia de esta configuración) — hay que reconfigurar los canales cada vez que el proceso arranca.
@@ -45,8 +46,8 @@ X-Api-Key: <valor de la variable de entorno API_KEY>
 
 ```json
 {
-  "data": {/* … el resultado, forma distinta por endpoint … */},
-  "meta": {/* opcional: solo en endpoints paginados */},
+  "data": { /* … el resultado, forma distinta por endpoint … */ },
+  "meta": { /* opcional: solo en endpoints paginados */ },
   "requestId": "83267c37-a6a5-454d-8675-d4de956e6e97"
 }
 ```
@@ -73,17 +74,17 @@ X-Api-Key: <valor de la variable de entorno API_KEY>
 
 ### 3.3 Códigos de error (`error.code`)
 
-| Código             | HTTP | Cuándo                                                                                      |
-| ------------------ | ---- | ------------------------------------------------------------------------------------------- |
-| `VALIDATION_ERROR` | 400  | Body/query inválido (campo faltante, tipo incorrecto, valor fuera del enum permitido)       |
-| `UNAUTHORIZED`     | 401  | Falta `X-Api-Key` o no coincide                                                             |
-| `NOT_FOUND`        | 404  | El recurso puntual no existe (p. ej. cancelar una operación que ya no está activa)          |
-| `CONFLICT`         | 409  | La acción choca con el estado actual (p. ej. reasignar una estrategia con operación activa) |
-| `INTERNAL`         | 500  | Error no esperado — nunca incluye detalle interno ni stack                                  |
-| `UNAVAILABLE`      | 503  | Reservado para degradación explícita (no producido hoy por ningún endpoint)                 |
-| `FORBIDDEN`        | 403  | Reservado — mapeado en el filtro de errores, pero ningún endpoint lo lanza hoy              |
-| `RATE_LIMITED`     | 429  | Reservado — no hay rate limiting implementado todavía (ver §7)                              |
-| `DEPENDENCY_DOWN`  | —    | Reservado en el enum, sin ningún status HTTP mapeado todavía — no se puede producir hoy     |
+| Código | HTTP | Cuándo |
+|---|---|---|
+| `VALIDATION_ERROR` | 400 | Body/query inválido (campo faltante, tipo incorrecto, valor fuera del enum permitido) |
+| `UNAUTHORIZED` | 401 | Falta `X-Api-Key` o no coincide |
+| `NOT_FOUND` | 404 | El recurso puntual no existe (p. ej. cancelar una operación que ya no está activa) |
+| `CONFLICT` | 409 | La acción choca con el estado actual (p. ej. reasignar una estrategia con operación activa) |
+| `INTERNAL` | 500 | Error no esperado — nunca incluye detalle interno ni stack |
+| `UNAVAILABLE` | 503 | Reservado para degradación explícita (no producido hoy por ningún endpoint) |
+| `FORBIDDEN` | 403 | Reservado — mapeado en el filtro de errores, pero ningún endpoint lo lanza hoy |
+| `RATE_LIMITED` | 429 | Reservado — no hay rate limiting implementado todavía (ver §7) |
+| `DEPENDENCY_DOWN` | — | Reservado en el enum, sin ningún status HTTP mapeado todavía — no se puede producir hoy |
 
 Un agente que integre esto **no necesita manejar** `FORBIDDEN`/`RATE_LIMITED`/`DEPENDENCY_DOWN` como casos reales todavía; están documentados solo para que el catálogo de `error.code` quede completo.
 
@@ -143,25 +144,15 @@ Estadísticas acumuladas de **todo el histórico** del proceso (no es una ventan
 
 Ventana en memoria de las últimas jugadas (ring buffer, tope real 200 — **no** hay historial más profundo, ver Mk-Api.md Anexo D §1).
 
-| Query param | Tipo   | Default | Notas                                                                                                |
-| ----------- | ------ | ------- | ---------------------------------------------------------------------------------------------------- |
-| `limit`     | número | `50`    | Se recorta en silencio a `200` si pides más; valores inválidos o ≤0 caen al default — nunca da error |
+| Query param | Tipo | Default | Notas |
+|---|---|---|---|
+| `limit` | número | `50` | Se recorta en silencio a `200` si pides más; valores inválidos o ≤0 caen al default — nunca da error |
 
 ```json
 {
   "data": [
-    {
-      "roundId": "019feee3-…",
-      "winner": "BANKER",
-      "score": 12,
-      "playedAt": "2026-08-11T03:35:12.329Z"
-    },
-    {
-      "roundId": "019feee3-…",
-      "winner": "BANKER",
-      "score": 7,
-      "playedAt": "2026-08-11T03:35:45.475Z"
-    }
+    { "roundId": "019feee3-…", "winner": "BANKER", "score": 12, "playedAt": "2026-08-11T03:35:12.329Z" },
+    { "roundId": "019feee3-…", "winner": "BANKER", "score": 7, "playedAt": "2026-08-11T03:35:45.475Z" }
   ],
   "meta": { "limit": 3, "count": 2 },
   "requestId": "…"
@@ -176,9 +167,9 @@ Orden: más antigua primero (igual que llegaron).
 
 Operaciones **activas** (en curso, no historial) de un canal. `channel` es **obligatorio**.
 
-| Query param | Valores válidos        |
-| ----------- | ---------------------- |
-| `channel`   | `oficial` \| `pruebas` |
+| Query param | Valores válidos |
+|---|---|
+| `channel` | `oficial` \| `pruebas` |
 
 Falta o valor inválido → `400 VALIDATION_ERROR`.
 
@@ -241,9 +232,9 @@ Sin body. El mismo evento (`operation.cancelled`) llega también por el stream S
 
 Estado actual de la asignación estrategia↔canal, si el canal está activo, y su martingala.
 
-| Path param | Valores válidos        |
-| ---------- | ---------------------- |
-| `channel`  | `oficial` \| `pruebas` |
+| Path param | Valores válidos |
+|---|---|
+| `channel` | `oficial` \| `pruebas` |
 
 **Estado por default (proceso recién arrancado, sin ningún `PATCH` todavía):**
 
@@ -272,9 +263,9 @@ Muta, en runtime y sin reiniciar el proceso, cuál estrategia corre en ese canal
 ```jsonc
 // Body (todos los campos opcionales)
 {
-  "strategyId": "streak-4", // asigna/reasigna la estrategia a este canal
-  "active": true, // enciende el canal: la estrategia asignada empieza a evaluar Y a mandar alertas
-  "maxMartingales": 3, // aplica a la estrategia que quede asignada a este canal (la nueva, si vino en el mismo body)
+  "strategyId": "streak-4",     // asigna/reasigna la estrategia a este canal
+  "active": true,                // enciende el canal: la estrategia asignada empieza a evaluar Y a mandar alertas
+  "maxMartingales": 3           // aplica a la estrategia que quede asignada a este canal (la nueva, si vino en el mismo body)
 }
 ```
 
@@ -284,15 +275,15 @@ Muta, en runtime y sin reiniciar el proceso, cuál estrategia corre en ese canal
 
 Reglas y errores:
 
-| Situación                                                                                                 | Resultado                                                                                                                                                                                                                                                                                                                           |
-| --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `strategyId` no es un string no vacío                                                                     | `400 VALIDATION_ERROR`                                                                                                                                                                                                                                                                                                              |
-| La estrategia de `strategyId` tiene una operación activa **ahora mismo**                                  | `409 CONFLICT` — la reasignación se rechaza por completo, no se aplica nada. Hay que esperar a que cierre o cancelarla primero (§4.5)                                                                                                                                                                                               |
+| Situación | Resultado |
+|---|---|
+| `strategyId` no es un string no vacío | `400 VALIDATION_ERROR` |
+| La estrategia de `strategyId` tiene una operación activa **ahora mismo** | `409 CONFLICT` — la reasignación se rechaza por completo, no se aplica nada. Hay que esperar a que cierre o cancelarla primero (§4.5) |
 | El canal destino ya tenía **otra** estrategia asignada, y esa otra tiene una operación activa ahora mismo | `409 CONFLICT` — misma protección que la fila anterior, pero del lado de la estrategia que sería expulsada: tampoco se le puede quitar el canal por debajo mientras opera. El mensaje de error no distingue cuál de las dos estrategias es la que bloquea; si te da 409, revisa `GET /api/v1/operations?channel=...` de ambos lados |
-| `active` no es booleano                                                                                   | `400 VALIDATION_ERROR`                                                                                                                                                                                                                                                                                                              |
-| `maxMartingales` no es un número ≥ 0                                                                      | `400 VALIDATION_ERROR`                                                                                                                                                                                                                                                                                                              |
-| `maxMartingales` viene pero el canal no tiene ninguna estrategia asignada                                 | `400 VALIDATION_ERROR`                                                                                                                                                                                                                                                                                                              |
-| `channel` no es `oficial`/`pruebas`                                                                       | `400 VALIDATION_ERROR`                                                                                                                                                                                                                                                                                                              |
+| `active` no es booleano | `400 VALIDATION_ERROR` |
+| `maxMartingales` no es un número ≥ 0 | `400 VALIDATION_ERROR` |
+| `maxMartingales` viene pero el canal no tiene ninguna estrategia asignada | `400 VALIDATION_ERROR` |
+| `channel` no es `oficial`/`pruebas` | `400 VALIDATION_ERROR` |
 
 **⚠️ Gap conocido, sin corregir todavía — no manden `maxMartingales >= 3`:** la validación de este campo solo exige "número finito ≥ 0", pero `core/operation/operation.entity.ts` **nunca soportó más de 2 martingalas** (la máquina de estados de una `Operation` es `OPEN → MG1 → MG2 → WON/LOST`, sin ningún estado para una 3ra pérdida consecutiva). Si configuras `maxMartingales: 3` (o más) y una operación real llega a esa 3ra pérdida, el motor lanza una excepción interna, descarta **esa** operación (`ActiveOperationRegistry` la borra) y lo único que queda visible es un `lastError` genérico en `GET /api/v1/health` — sin tumbar el proceso, pero sin cerrar la operación como `WON`/`LOST` tampoco (simplemente desaparece de `GET /operations`, sin pasar por `operation.won`/`operation.lost` en el SSE). Hasta que esto se corrija en el backend: **el frontend nunca debe permitir configurar `maxMartingales` por encima de `2`.**
 
@@ -301,12 +292,7 @@ Respuesta exitosa: mismo shape que `GET /api/v1/channels/:channel`, ya con los c
 ```json
 // PATCH /api/v1/channels/oficial  { "strategyId": "streak-4", "active": true }
 {
-  "data": {
-    "channel": "oficial",
-    "strategyId": "streak-4",
-    "active": true,
-    "maxMartingalesOverride": null
-  },
+  "data": { "channel": "oficial", "strategyId": "streak-4", "active": true, "maxMartingalesOverride": null },
   "requestId": "…"
 }
 ```
@@ -333,20 +319,20 @@ data: <JSON>
 Donde el JSON de `data` siempre tiene esta forma:
 
 ```json
-{ "type": "<tipo>", "payload": {/* … */}, "occurredAt": "2026-08-11T04:28:10.828Z" }
+{ "type": "<tipo>", "payload": { /* … */ }, "occurredAt": "2026-08-11T04:28:10.828Z" }
 ```
 
 **Tipos de evento:**
 
-| `type`                             | `payload`                                           | Cuándo                                                                                                                                                    |
-| ---------------------------------- | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `game.received`                    | `{ roundId, winner, score, playedAt }`              | Cada jugada nueva en vivo (nunca las históricas de arranque)                                                                                              |
-| `stats.rolling`                    | `{ window: 200\|50, playerPct, bankerPct, tiePct }` | Dos por cada jugada nueva (una por ventana). **No** es lo mismo que `GET /statistics` — esto es sobre las últimas 200/50, no el acumulado histórico total |
-| `operation.opened`                 | `OperationVm` completo (mismo shape que §4.4)       | Se abrió una operación nueva                                                                                                                              |
-| `operation.mg1` / `operation.mg2`  | `OperationVm` completo                              | La operación avanzó de martingala                                                                                                                         |
-| `operation.tie`                    | `OperationVm` completo                              | Llegó un TIE mientras la operación seguía activa (no cambia su estado)                                                                                    |
-| `operation.won` / `operation.lost` | `OperationVm` completo                              | La operación cerró por resultado de jugada                                                                                                                |
-| `operation.cancelled`              | `OperationVm` completo                              | La operación se cerró por `POST /operations/:id/cancel`                                                                                                   |
+| `type` | `payload` | Cuándo |
+|---|---|---|
+| `game.received` | `{ roundId, winner, score, playedAt }` | Cada jugada nueva en vivo (nunca las históricas de arranque) |
+| `stats.rolling` | `{ window: 200\|50, playerPct, bankerPct, tiePct }` | Dos por cada jugada nueva (una por ventana). **No** es lo mismo que `GET /statistics` — esto es sobre las últimas 200/50, no el acumulado histórico total |
+| `operation.opened` | `OperationVm` completo (mismo shape que §4.4) | Se abrió una operación nueva |
+| `operation.mg1` / `operation.mg2` | `OperationVm` completo | La operación avanzó de martingala |
+| `operation.tie` | `OperationVm` completo | Llegó un TIE mientras la operación seguía activa (no cambia su estado) |
+| `operation.won` / `operation.lost` | `OperationVm` completo | La operación cerró por resultado de jugada |
+| `operation.cancelled` | `OperationVm` completo | La operación se cerró por `POST /operations/:id/cancel` |
 
 **Importante:** cada evento de operación trae el `OperationVm` **completo y actualizado**, nunca un diff — el frontend reemplaza su estado en memoria directo, sin tener que recombinar campos. Para saber a qué canal/página pertenece un evento de operación, usa su `strategyId` (compáralo contra `GET /api/v1/channels/:channel` para saber de qué canal es en ese momento).
 
@@ -369,7 +355,6 @@ data: {"type":"stats.rolling","payload":{"window":200,"playerPct":46,"bankerPct"
 ```
 
 **Nota para el frontend — headers en SSE:** el `EventSource` nativo del navegador **no permite mandar headers custom** como `X-Api-Key`. Si el frontend necesita usar `EventSource` tal cual, hace falta una de estas dos cosas (a decidir cuando exista el frontend real, no resuelto en este backend):
-
 1. Un cliente SSE basado en `fetch` (p. ej. `@microsoft/fetch-event-source` o similar) que sí puede mandar headers.
 2. O una excepción de auth específica para esta ruta (no implementada — hoy `X-Api-Key` es obligatorio también acá).
 
@@ -379,13 +364,17 @@ data: {"type":"stats.rolling","payload":{"window":200,"playerPct":46,"bankerPct"
 
 ### 4.9 `POST /api/v1/admin/reports?channel=`
 
-Genera y despacha el resumen (`RESUMEN`) — el mismo caso de uso que el endpoint legado (§8), pero autenticado con `X-Api-Key` en vez de una contraseña en el body.
+Genera y despacha el resumen completo (comando `RESUMEN`): es el **único** endpoint administrativo del sistema — el viejo `POST /admin/commands` (contraseña en el body, fuera de `/api/v1`) se retiró del código por completo, ya no existe ninguna ruta con ese path. Este es el que hay que usar, autenticado con `X-Api-Key` igual que el resto de la API.
 
-| Query param | Valores válidos                   | Default |
-| ----------- | --------------------------------- | ------- |
-| `channel`   | `oficial` \| `pruebas` \| `todos` | `todos` |
+**Pensado explícitamente para un botón del frontend** (p. ej. "Enviar resumen ahora" en el panel de administración): un único `POST`, sin body, con el `channel` que elija el usuario. Como sí manda un mensaje real (ver el aviso abajo), conviene deshabilitar el botón mientras la petición está en curso y, si el frontend quiere ser explícito, pedir una confirmación antes de disparar el `POST` — no hay nada en el backend que lo debounce por vos.
 
-**⚠️ Efecto real:** este endpoint dispara un mensaje real a Telegram (a los chats configurados en `.env`). No lo llames en pruebas contra un despliegue con tokens reales configurados, salvo que quieras que el mensaje llegue de verdad.
+| Query param | Valores válidos | Default |
+|---|---|---|
+| `channel` | `oficial` \| `pruebas` \| `todos` | `todos` |
+
+**⚠️ Efecto real:** este endpoint dispara un mensaje real a Telegram (a los chats configurados en `.env`). No lo llames en pruebas contra un despliegue con tokens reales configurados, salvo que quieras que el mensaje llegue de verdad. Si necesitás los mismos números **sin** ese efecto secundario (para pintar un dashboard que se refresca solo), usá `GET /api/v1/reports/summary` (§4.10) en su lugar.
+
+**201 Created** (default de Nest para `POST`, no hay `@HttpCode` que lo cambie — a diferencia de §4.5, que sí fuerza `200`):
 
 ```json
 {
@@ -393,8 +382,8 @@ Genera y despacha el resumen (`RESUMEN`) — el mismo caso de uso que el endpoin
     "channel": "todos",
     "dispatchedAt": "2026-08-11T04:17:44.000Z",
     "metrics": {
-      "oficial": {/* SummaryReportResult del grupo oficial */},
-      "pruebas": {/* SummaryReportResult del grupo pruebas */}
+      "oficial": { /* SummaryReportResult del grupo oficial */ },
+      "pruebas": { /* SummaryReportResult del grupo pruebas */ }
     }
   },
   "requestId": "…"
@@ -498,7 +487,7 @@ Cada página del frontend (`/panel/oficial`, `/panel/pruebas`) sigue este patró
 ## 7. Qué NO existe todavía (fuera de alcance, a propósito)
 
 - **`GET /api/v1/results`** (historial profundo desde la base de datos `jugadas`) — no se activó la ingesta a la tabla; solo existe la ventana en memoria de 200 jugadas (§4.3). Ver Mk-Api.md Anexo D §1.
-- **CORS** — bloqueado a propósito: no hay dominio de frontend todavía para poner en la allowlist. Sin CORS configurado, un navegador en otro origen no podrá llamar a la API directo hasta que se resuelva (Mk-Api.md Anexo D §6).
+- **Allowlist de CORS por dominio** — mientras el proyecto está en desarrollo, CORS está **abierto a cualquier origen** (`origin: true` en `main.ts`, ver §1) para no bloquear al frontend antes de tener un dominio fijo. Antes de producción hay que reemplazarlo por una allowlist explícita de dominios permitidos.
 - **Rate limiting** — diferido; no hay ninguna dependencia de rate-limit instalada todavía.
 - **Roles/multiusuario/JWT** — decisión de negocio: un único secreto compartido es suficiente, no hay operadores humanos diferenciados.
 - **Backpressure/límite de clientes SSE** — ver §4.8.
@@ -507,20 +496,21 @@ Cada página del frontend (`/panel/oficial`, `/panel/pruebas`) sigue este patró
 
 ---
 
-## 8. Endpoints legados (fuera de `/api/v1`, siguen intactos)
+## 8. El único endpoint fuera de `/api/v1`
 
-| Endpoint               | Auth                                         | Formato de respuesta                                              | Notas                                                                                                                                                       |
-| ---------------------- | -------------------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET /healthz`         | ninguna                                      | `{ status: "ok", ...snapshot crudo }`                             | Sin envelope. Pensado para healthchecks de plataforma/infraestructura, no para el frontend                                                                  |
-| `POST /admin/commands` | `{ password }` en el body (`ADMIN_PASSWORD`) | `{ statusCode, message }` de Nest en error; objeto plano en éxito | Sigue funcionando exactamente igual que antes de esta API — ver ADR-11 en Mk-Api.md. Preferir `POST /api/v1/admin/reports` (§4.9) para integraciones nuevas |
+| Endpoint | Auth | Formato de respuesta | Notas |
+|---|---|---|---|
+| `GET /healthz` | ninguna | `{ status: "ok", ...snapshot crudo }` | Sin envelope. Pensado para healthchecks de plataforma/infraestructura (Railway/Render/etc.), no para el frontend — para eso está `GET /api/v1/health` (§4.1) |
+
+**El viejo `POST /admin/commands` (contraseña `ADMIN_PASSWORD` en el body) ya no existe** — se retiró del código junto con toda la administración de contraseñas: ese controller, su módulo y el hasher se borraron, `ADMIN_PASSWORD` ya no se lee de `.env`, y `main.ts` ya no necesita excluirlo de `setGlobalPrefix`. Todo lo administrativo vive ahora en `POST /api/v1/admin/reports` (§4.9), dentro de la API, con la misma auth (`X-Api-Key`) que cualquier otro endpoint.
 
 ---
 
 ## 9. Variables de entorno relevantes para la API
 
-| Variable  | Para qué                                                                                   |
-| --------- | ------------------------------------------------------------------------------------------ |
+| Variable | Para qué |
+|---|---|
 | `API_KEY` | Secreto compartido que exige `X-Api-Key` en toda la API nueva. Sin ella, todo responde 401 |
-| `PORT`    | Puerto HTTP (ya existía, sin cambios)                                                      |
+| `PORT` | Puerto HTTP (ya existía, sin cambios) |
 
 Ver `.env.example` para la lista completa (incluye las de Telegram/Tipminer/DB, no específicas de esta capa).
