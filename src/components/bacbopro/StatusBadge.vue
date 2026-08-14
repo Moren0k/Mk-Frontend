@@ -2,9 +2,12 @@
 interface Props {
   text: string
   variant: 'sync' | 'vip'
+  active?: boolean
 }
 
-defineProps<Props>()
+withDefaults(defineProps<Props>(), {
+  active: true,
+})
 </script>
 
 <template>
@@ -18,7 +21,8 @@ defineProps<Props>()
   >
     <span
       v-if="variant === 'sync'"
-      class="bbp-pulse h-2 w-2 rounded-full bg-bbp-active"
+      class="h-2 w-2 rounded-full"
+      :class="active ? 'bbp-pulse bg-bbp-active' : 'bg-bbp-banker'"
       aria-hidden="true"
     />
     {{ text }}

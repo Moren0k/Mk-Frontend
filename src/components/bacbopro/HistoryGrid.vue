@@ -11,7 +11,7 @@ defineProps<Props>()
 
 <template>
   <div class="bbp-scroll overflow-x-auto" aria-label="Historial de últimas 200 jugadas">
-    <div class="mx-auto grid w-fit grid-cols-16 justify-items-center gap-1 sm:gap-1.5 md:gap-2">
+    <div class="grid w-full grid-cols-16 justify-items-center gap-1 sm:gap-1.5 md:gap-2">
       <template v-for="(row, rowIndex) in grid" :key="rowIndex">
         <HistoryCell
           v-for="(cell, cellIndex) in row"

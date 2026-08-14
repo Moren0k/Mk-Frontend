@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync } from 'node:fs'
-import { join, extname } from 'node:path'
+import { join, extname, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
@@ -34,21 +34,25 @@ function walkDir(dir) {
 }
 
 const files = walkDir(SRC_DIR)
-let errors = 0
+const errors = []
 
 for (const file of files) {
+  const rel = relative(SRC_DIR, file)
+  if (rel === 'api' || rel.startsWith(`api${process.platform === 'win32' ? '\\' : '/'}`)) {
+    continue
+  }
   const content = readFileSync(file, 'utf-8')
   for (const { pattern, name } of FORBIDDEN_PATTERNS) {
     if (pattern.test(content)) {
-      console.error(`FORBIDDEN: ${name} found in ${file}`)
-      errors++
+      errors.push(`FORBIDDEN: ${name} found in ${file}`)
     }
   }
 }
 
-if (errors > 0) {
-  console.error(`\n${errors} forbidden backend dependencies found.`)
+if (errors.length > 0) {
+  console.error(errors.join('\n'))
+  console.error(`\n${errors.length} forbidden backend dependencies found.`)
   process.exit(1)
 } else {
-  console.log('No backend dependencies found. Check passed.')
+  console.log('No backend dependencies found outside src/api. Check passed.')
 }

@@ -14,9 +14,9 @@ defineProps<Props>()
     <p
       class="mt-1.5 text-2xl font-bold"
       :class="{
-        'text-bbp-tie': item.tone === 'yellow',
-        'text-bbp-banker': item.tone === 'red',
-        'text-bbp-active': item.tone === 'green',
+        'text-bbp-tie [text-shadow:0_0_10px_currentColor]': item.tone === 'yellow',
+        'text-bbp-banker [text-shadow:0_0_10px_currentColor]': item.tone === 'red',
+        'text-bbp-active [text-shadow:0_0_10px_currentColor]': item.tone === 'green',
         'font-mono text-gray-100': item.tone === 'mono',
       }"
     >

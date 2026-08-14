@@ -3,11 +3,16 @@ import type { WinnerOutcome } from '@/types/bacbopro'
 import WinnerIndicator from './WinnerIndicator.vue'
 
 interface Props {
-  winner: WinnerOutcome
+  winner: WinnerOutcome | null
   embedded?: boolean
+  loading?: boolean
 }
 
-defineProps<Props>()
+withDefaults(defineProps<Props>(), {
+  winner: null,
+  embedded: false,
+  loading: false,
+})
 </script>
 
 <template>
@@ -20,7 +25,19 @@ defineProps<Props>()
     </h2>
 
     <div class="mt-4 flex justify-center">
-      <WinnerIndicator :winner="winner" />
+      <p
+        v-if="loading"
+        class="py-4 text-sm font-semibold tracking-wider text-gray-400"
+      >
+        CARGANDO…
+      </p>
+      <p
+        v-else-if="!winner"
+        class="py-4 text-sm font-semibold tracking-wider text-gray-400"
+      >
+        SIN JUGADAS
+      </p>
+      <WinnerIndicator v-else :winner="winner" />
     </div>
   </section>
 </template>

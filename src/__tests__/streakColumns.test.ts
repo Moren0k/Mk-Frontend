@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { buildStreakColumns, historyGrid, mockResults } from '@/mocks/bacbopro/resultsData'
 import { STREAK_MAX_ROWS } from '@/mocks/bacbopro/resultsData'
+import { statsLast200, statsLast50 } from '@/mocks/bacbopro/historyData'
+import type { NonEmptyOutcome } from '@/types/bacbopro'
 
 describe('buildStreakColumns', () => {
   it('keeps equal outcomes in the same column', () => {
@@ -77,5 +79,47 @@ describe('historyGrid', () => {
     const lastResult = mockResults[mockResults.length - 1]
     const bottomRight = historyGrid[9]?.[15]
     expect(bottomRight).toBe(lastResult)
+  })
+})
+
+describe('stats windows', () => {
+  function percentagesOf(results: NonEmptyOutcome[]) {
+    const total = results.length
+    const counts: Record<NonEmptyOutcome, number> = { player: 0, tie: 0, banker: 0 }
+    for (const outcome of results) {
+      counts[outcome] += 1
+    }
+    return {
+      player: Math.round((counts.player / total) * 100),
+      tie: Math.round((counts.tie / total) * 100),
+      banker: Math.round((counts.banker / total) * 100),
+    }
+  }
+
+  function byLabel(block: { segments: { label: string; percentage: number }[] }) {
+    return Object.fromEntries(block.segments.map((segment) => [segment.label, segment.percentage]))
+  }
+
+  it('statsLast200 is computed from the last 200 results', () => {
+    const expected = percentagesOf(mockResults.slice(-200))
+    const actual = byLabel(statsLast200)
+    expect(actual.PLAYER).toBe(expected.player)
+    expect(actual.TIE).toBe(expected.tie)
+  })
+
+  it('statsLast50 is computed from exactly the last 50 results', () => {
+    const window = mockResults.slice(-50)
+    expect(window).toHaveLength(50)
+    const expected = percentagesOf(window)
+    const actual = byLabel(statsLast50)
+    expect(actual.PLAYER).toBe(expected.player)
+    expect(actual.TIE).toBe(expected.tie)
+  })
+
+  it('each stats block sums to 100 percent', () => {
+    for (const block of [statsLast200, statsLast50]) {
+      const total = block.segments.reduce((sum, segment) => sum + segment.percentage, 0)
+      expect(total).toBe(100)
+    }
   })
 })

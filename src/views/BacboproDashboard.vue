@@ -1,30 +1,72 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 
 import BacboproHeader from '@/components/bacbopro/BacboproHeader.vue'
 import ToggleCard from '@/components/bacbopro/ToggleCard.vue'
 import KpiGrid from '@/components/bacbopro/KpiGrid.vue'
+import StatsSection from '@/components/bacbopro/StatsSection.vue'
 import StreakBoard from '@/components/bacbopro/StreakBoard.vue'
 import HistoryPanel from '@/components/bacbopro/HistoryPanel.vue'
 import LastWinnerCard from '@/components/bacbopro/LastWinnerCard.vue'
 import OperationCard from '@/components/bacbopro/OperationCard.vue'
 
-import { historyGrid, streakColumns } from '@/mocks/bacbopro/resultsData'
-import { statsLast100, statsLast200 } from '@/mocks/bacbopro/historyData'
-import { kpiItems } from '@/mocks/bacbopro/kpiData'
-import { operationData } from '@/mocks/bacbopro/operationData'
-import { lastWinnerData } from '@/mocks/bacbopro/winnerData'
-import { strategyOptions } from '@/mocks/bacbopro/strategyData'
+import { useBacboproStore } from '@/stores/bacbopro'
+import type { KpiItem } from '@/types/bacbopro'
 
 import telegramLogo from '@/assets/images/MKBACBO_PRUEBA.png'
 import oficialLogo from '@/assets/images/MKBACBO_OFICIAL.png'
 
-const telegramActive = ref(true)
-const bacBoActive = ref(true)
-const telegramStrategy = ref(strategyOptions[0]?.id ?? '')
-const officialStrategy = ref(strategyOptions[1]?.id ?? '')
+const store = useBacboproStore()
 
-const statsBlocks = [statsLast200, statsLast100]
+const EMPTY_KPI_ITEMS: KpiItem[] = [
+  { label: 'WINS', value: '—', tone: 'green' },
+  { label: 'ALERTAS ENVIADAS', value: '—', tone: 'yellow' },
+  { label: 'LOST', value: '—', tone: 'red' },
+  { label: 'TIEMPO', value: '—', tone: 'mono' },
+]
+
+const LOADING_KPI_ITEMS: KpiItem[] = [
+  { label: 'WINS', value: '…', tone: 'green' },
+  { label: 'ALERTAS ENVIADAS', value: '…', tone: 'yellow' },
+  { label: 'LOST', value: '…', tone: 'red' },
+  { label: 'TIEMPO', value: '…', tone: 'mono' },
+]
+
+const kpiItems = computed<KpiItem[]>(() => {
+  if (store.summary) return store.kpiItems
+  return store.summaryLoading ? LOADING_KPI_ITEMS : EMPTY_KPI_ITEMS
+})
+
+const telegramActive = computed(() => store.pruebas.config?.active ?? false)
+const telegramStrategyId = computed(() => store.pruebas.config?.strategyId ?? '')
+const bacBoActive = computed(() => store.oficial.config?.active ?? false)
+const bacBoStrategyId = computed(() => store.oficial.config?.strategyId ?? '')
+
+const historyLoading = computed(() => store.historyLoading && store.history.length === 0)
+
+function confirmTelegramState(value: boolean): void {
+  void store.applyChannelPatch('pruebas', { active: value })
+}
+
+function confirmTelegramStrategy(id: string): void {
+  void store.applyChannelPatch('pruebas', { strategyId: id })
+}
+
+function confirmBacBoState(value: boolean): void {
+  void store.applyChannelPatch('oficial', { active: value })
+}
+
+function confirmBacBoStrategy(id: string): void {
+  void store.applyChannelPatch('oficial', { strategyId: id })
+}
+
+onMounted(() => {
+  void store.initialize()
+})
+
+onUnmounted(() => {
+  store.dispose()
+})
 </script>
 
 <template>
@@ -37,48 +79,89 @@ const statsBlocks = [statsLast200, statsLast100]
         class="min-w-0 lg:col-start-1 lg:row-start-1"
         :items="kpiItems"
       />
-      <StreakBoard
+      <StatsSection
         class="min-w-0 lg:col-start-1 lg:row-start-2"
-        :columns="streakColumns"
+        :blocks="store.statsBlocks"
+        :loading="historyLoading"
+      />
+      <StreakBoard
+        class="min-w-0 lg:col-start-1 lg:row-start-3"
+        :columns="store.streakColumns"
+        :loading="historyLoading"
       />
       <aside
-        class="min-w-0 max-w-full content-start lg:col-start-2 lg:row-start-1 lg:row-span-3"
+        class="min-w-0 max-w-full content-start lg:col-start-2 lg:row-start-1 lg:row-span-4"
       >
         <div class="min-w-0 max-w-full overflow-hidden rounded-lg border border-bbp-border bg-bbp-panel">
           <div
             class="grid grid-cols-1 divide-y divide-bbp-border border-b border-bbp-border sm:grid-cols-2 sm:divide-x sm:divide-y-0"
           >
             <ToggleCard
-              v-model="telegramActive"
-              v-model:strategy="telegramStrategy"
               :logo="telegramLogo"
               logo-alt="PRUEBAS TELEGRAM"
               tone="banker"
               title="PRUEBAS TELEGRAM"
-              :strategy-options="strategyOptions"
+              :active="telegramActive"
+              :strategy-id="telegramStrategyId"
+              :strategy-options="store.strategyOptions"
+              :patching="store.pruebas.patching"
+              :patch-error="store.pruebas.patchError"
               embedded
+              @confirm-state="confirmTelegramState"
+              @confirm-strategy="confirmTelegramStrategy"
+              @dismiss-error="store.clearPatchError('pruebas')"
             />
             <ToggleCard
-              v-model="bacBoActive"
-              v-model:strategy="officialStrategy"
               :logo="oficialLogo"
               logo-alt="BAC BO OFICIAL"
               tone="player"
               title="BAC BO OFICIAL"
-              :strategy-options="strategyOptions"
+              :active="bacBoActive"
+              :strategy-id="bacBoStrategyId"
+              :strategy-options="store.strategyOptions"
+              :patching="store.oficial.patching"
+              :patch-error="store.oficial.patchError"
+              embedded
+              @confirm-state="confirmBacBoState"
+              @confirm-strategy="confirmBacBoStrategy"
+              @dismiss-error="store.clearPatchError('oficial')"
+            />
+          </div>
+          <div class="border-b border-bbp-border">
+            <LastWinnerCard
+              :winner="store.lastWinner"
+              :loading="historyLoading"
               embedded
             />
           </div>
           <div class="border-b border-bbp-border">
-            <LastWinnerCard :winner="lastWinnerData.winner" embedded />
+            <OperationCard
+              :operation="store.oficialOperation"
+              channel-label="BAC BO OFICIAL"
+              :loading="store.oficial.loading"
+              :cancelling="store.oficial.cancelling"
+              :cancel-error="store.oficial.cancelError"
+              embedded
+              @cancel="store.cancelOperation('oficial')"
+              @dismiss-error="store.clearCancelError('oficial')"
+            />
           </div>
-          <OperationCard :operation="operationData" embedded />
+          <OperationCard
+            :operation="store.pruebasOperation"
+            channel-label="PRUEBAS TELEGRAM"
+            :loading="store.pruebas.loading"
+            :cancelling="store.pruebas.cancelling"
+            :cancel-error="store.pruebas.cancelError"
+            embedded
+            @cancel="store.cancelOperation('pruebas')"
+            @dismiss-error="store.clearCancelError('pruebas')"
+          />
         </div>
       </aside>
       <HistoryPanel
-        class="min-w-0 lg:col-start-1 lg:row-start-3"
-        :grid="historyGrid"
-        :stats-blocks="statsBlocks"
+        class="min-w-0 lg:col-start-1 lg:row-start-4"
+        :grid="store.historyGrid"
+        :loading="historyLoading"
       />
     </main>
   </div>

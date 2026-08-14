@@ -4,10 +4,13 @@ import type { StrategyOption } from '@/types/bacbopro'
 
 interface Props {
   options: StrategyOption[]
+  modelValue: string
   label?: string
   embedded?: boolean
   compact?: boolean
   selectLabel?: string
+  patching?: boolean
+  error?: string | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -15,15 +18,22 @@ const props = withDefaults(defineProps<Props>(), {
   embedded: false,
   compact: false,
   selectLabel: 'Seleccionar estrategia',
+  patching: false,
+  error: null,
 })
 
-const model = defineModel<string>({ required: true })
+const emit = defineEmits<{
+  confirm: [id: string]
+  dismissError: []
+}>()
 
 const pending = ref<string | null>(null)
 const showConfirm = ref(false)
 
-const selectValue = computed(() => pending.value ?? model.value)
-const hasPendingChange = computed(() => pending.value !== null && pending.value !== model.value)
+const selectValue = computed(() => pending.value ?? props.modelValue)
+const hasPendingChange = computed(
+  () => pending.value !== null && pending.value !== props.modelValue,
+)
 
 function optionLabel(id: string): string {
   return props.options.find((option) => option.id === id)?.label ?? id
@@ -31,7 +41,7 @@ function optionLabel(id: string): string {
 
 function handleSelectChange(event: Event): void {
   const value = (event.target as HTMLSelectElement).value
-  if (value === model.value) {
+  if (value === props.modelValue) {
     pending.value = null
     showConfirm.value = false
     return
@@ -52,7 +62,7 @@ function cancelPending(): void {
 
 function confirmChange(): void {
   if (pending.value === null) return
-  model.value = pending.value
+  emit('confirm', pending.value)
   pending.value = null
   showConfirm.value = false
 }
@@ -75,9 +85,17 @@ function confirmChange(): void {
       <select
         :value="selectValue"
         :aria-label="selectLabel"
-        class="w-full min-w-0 max-w-full appearance-none rounded-md border border-bbp-border-strong bg-bbp-bg/80 px-3 py-2 pr-9 text-sm font-semibold tracking-wider text-gray-100 outline-none transition-colors duration-200 focus:border-bbp-active/60 focus:ring-1 focus:ring-bbp-active/40"
+        :disabled="patching || options.length === 0"
+        class="w-full min-w-0 max-w-full appearance-none rounded-md border border-bbp-border-strong bg-bbp-bg/80 px-3 py-2 pr-9 text-sm font-semibold tracking-wider text-gray-100 outline-none transition-colors duration-200 focus:border-bbp-active/60 focus:ring-1 focus:ring-bbp-active/40 disabled:opacity-60"
         @change="handleSelectChange"
       >
+        <option
+          v-if="options.length === 0"
+          value=""
+          class="bg-bbp-panel text-gray-100"
+        >
+          CARGANDO…
+        </option>
         <option
           v-for="option in options"
           :key="option.id"
@@ -96,7 +114,33 @@ function confirmChange(): void {
     </div>
 
     <div
-      v-if="hasPendingChange && !showConfirm"
+      v-if="patching"
+      aria-live="polite"
+      class="mt-2 w-full min-w-0 rounded-md border border-bbp-border bg-bbp-bg/60 px-2.5 py-2 text-center text-[0.625rem] font-semibold tracking-wider text-gray-400"
+    >
+      APLICANDO CAMBIO…
+    </div>
+
+    <div
+      v-else-if="error"
+      aria-live="polite"
+      class="mt-2 flex w-full min-w-0 flex-wrap items-center justify-between gap-2 rounded-md border border-bbp-banker/40 bg-bbp-banker/10 px-2.5 py-2"
+    >
+      <span class="text-[0.625rem] font-semibold tracking-wider text-bbp-banker">
+        {{ error }}
+      </span>
+      <button
+        type="button"
+        aria-label="Cerrar error de estrategia"
+        class="rounded border border-bbp-border bg-bbp-bg/40 px-2.5 py-1 text-[0.6875rem] font-bold tracking-wider text-gray-400 transition-colors duration-200 hover:bg-bbp-bg"
+        @click="emit('dismissError')"
+      >
+        CERRAR
+      </button>
+    </div>
+
+    <div
+      v-if="hasPendingChange && !showConfirm && !patching"
       aria-live="polite"
       class="mt-2 flex w-full min-w-0 flex-wrap items-center justify-between gap-2 rounded-md border border-bbp-border bg-bbp-bg/60 px-2.5 py-2"
     >
@@ -134,7 +178,7 @@ function confirmChange(): void {
         ¿CONFIRMAR CAMBIO DE ESTRATEGIA?
       </p>
       <p class="mt-1 text-center text-xs font-semibold text-gray-300">
-        {{ optionLabel(model) }} → {{ optionLabel(pending ?? model) }}
+        {{ optionLabel(modelValue) }} → {{ optionLabel(pending ?? modelValue) }}
       </p>
       <div class="mt-2 grid grid-cols-2 gap-2">
         <button

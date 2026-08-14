@@ -49,15 +49,21 @@ defineProps<{
 .outcome-badge--player {
   background: var(--color-player);
   color: #fff;
+  box-shadow: 0 0 6px rgba(0, 176, 255, 0.5);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--color-player) 50%, transparent);
 }
 
 .outcome-badge--banker {
   background: var(--color-banker);
   color: #fff;
+  box-shadow: 0 0 6px rgba(255, 23, 68, 0.5);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--color-banker) 50%, transparent);
 }
 
 .outcome-badge--tie {
   background: var(--color-tie);
   color: #1a1a2e;
+  box-shadow: 0 0 6px rgba(255, 238, 0, 0.5);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--color-tie) 50%, transparent);
 }
 </style>

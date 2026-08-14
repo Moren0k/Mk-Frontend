@@ -16,9 +16,9 @@ defineProps<Props>()
         :key="segment.label"
         class="overflow-hidden whitespace-nowrap text-center text-[0.625rem] font-semibold tracking-wider"
         :class="{
-          'text-bbp-player': segment.outcome === 'player',
-          'text-bbp-tie': segment.outcome === 'tie',
-          'text-bbp-banker': segment.outcome === 'banker',
+          'text-bbp-player [text-shadow:0_0_6px_currentColor]': segment.outcome === 'player',
+          'text-bbp-tie [text-shadow:0_0_6px_currentColor]': segment.outcome === 'tie',
+          'text-bbp-banker [text-shadow:0_0_6px_currentColor]': segment.outcome === 'banker',
         }"
         :style="{ width: `${segment.percentage}%` }"
       >

@@ -1,14 +1,21 @@
 <script setup lang="ts">
-import type { Outcome, StatsBlock } from '@/types/bacbopro'
+import { computed } from 'vue'
+import type { Outcome } from '@/types/bacbopro'
 import HistoryGrid from './HistoryGrid.vue'
-import StatsBar from './StatsBar.vue'
 
 interface Props {
   grid: Outcome[][]
-  statsBlocks: StatsBlock[]
+  loading?: boolean
 }
 
-defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  grid: () => [],
+  loading: false,
+})
+
+const isEmpty = computed(() =>
+  props.grid.length === 0 || props.grid.flat().every((cell) => cell === 'empty'),
+)
 </script>
 
 <template>
@@ -20,23 +27,20 @@ defineProps<Props>()
       ÚLTIMAS JUGADAS
     </h2>
 
-    <div
-      class="mt-4 grid grid-cols-1 items-center gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:gap-8 xl:gap-10"
-    >
-      <div class="min-w-0 lg:justify-self-center">
-        <HistoryGrid :grid="grid" />
-      </div>
-
-      <div
-        class="flex w-full min-w-0 max-w-lg flex-col justify-center gap-5 self-center justify-self-center lg:max-w-full"
+    <div class="mt-4 w-full min-w-0">
+      <p
+        v-if="loading"
+        class="py-4 text-center text-sm font-semibold tracking-wider text-gray-400"
       >
-        <div v-for="block in statsBlocks" :key="block.title" class="w-full">
-          <h3 class="text-center text-sm font-semibold tracking-[0.2em] text-gray-400">
-            {{ block.title }}
-          </h3>
-          <StatsBar class="mt-2" :segments="block.segments" />
-        </div>
-      </div>
+        CARGANDO…
+      </p>
+      <p
+        v-else-if="isEmpty"
+        class="py-4 text-center text-sm font-semibold tracking-wider text-gray-400"
+      >
+        SIN JUGADAS
+      </p>
+      <HistoryGrid v-else :grid="grid" />
     </div>
   </section>
 </template>

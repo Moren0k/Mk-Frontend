@@ -9,31 +9,45 @@ interface Props {
   logoAlt: string
   tone: 'banker' | 'player'
   title: string
+  active: boolean
+  strategyId: string
   embedded?: boolean
   strategyOptions?: StrategyOption[]
+  patching?: boolean
+  patchError?: string | null
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  embedded: false,
+  strategyOptions: () => [],
+  patching: false,
+  patchError: null,
+})
 
-const model = defineModel<boolean>({ required: true })
-const strategy = defineModel<string>('strategy', { default: '' })
+const emit = defineEmits<{
+  confirmState: [value: boolean]
+  confirmStrategy: [id: string]
+  dismissError: []
+}>()
 
 const pendingEnabled = ref<boolean | null>(null)
 const showToggleConfirm = ref(false)
 
-const displayEnabled = computed(() => pendingEnabled.value ?? model.value)
+const displayEnabled = computed(() => pendingEnabled.value ?? props.active)
 const hasPendingToggleChange = computed(
-  () => pendingEnabled.value !== null && pendingEnabled.value !== model.value,
+  () => pendingEnabled.value !== null && pendingEnabled.value !== props.active,
 )
 
-const hexColor = computed(() => (props.tone === 'banker' ? '#E53935' : '#1E88E5'))
+const hexColor = computed(() =>
+  props.tone === 'banker' ? 'var(--color-bbp-banker)' : 'var(--color-bbp-player)',
+)
 
 function enabledLabel(value: boolean): string {
   return value ? 'ON' : 'OFF'
 }
 
 function handleToggleChange(value: boolean): void {
-  if (value === model.value) {
+  if (value === props.active) {
     pendingEnabled.value = null
     showToggleConfirm.value = false
     return
@@ -54,7 +68,7 @@ function cancelTogglePending(): void {
 
 function confirmToggleChange(): void {
   if (pendingEnabled.value === null) return
-  model.value = pendingEnabled.value
+  emit('confirmState', pendingEnabled.value)
   pendingEnabled.value = null
   showToggleConfirm.value = false
 }
@@ -83,11 +97,38 @@ function confirmToggleChange(): void {
       :model-value="displayEnabled"
       :active-color="hexColor"
       :label="`Activar ${title}`"
+      :disabled="patching"
       @update:model-value="handleToggleChange"
     />
 
     <div
-      v-if="hasPendingToggleChange && !showToggleConfirm"
+      v-if="patching"
+      aria-live="polite"
+      class="w-full min-w-0 rounded-md border border-bbp-border bg-bbp-bg/60 px-2.5 py-2 text-center text-[0.625rem] font-semibold tracking-wider text-gray-400"
+    >
+      APLICANDO CAMBIO…
+    </div>
+
+    <div
+      v-else-if="patchError"
+      aria-live="polite"
+      class="flex w-full min-w-0 flex-wrap items-center justify-between gap-2 rounded-md border border-bbp-banker/40 bg-bbp-banker/10 px-2.5 py-2"
+    >
+      <span class="text-[0.625rem] font-semibold tracking-wider text-bbp-banker">
+        {{ patchError }}
+      </span>
+      <button
+        type="button"
+        aria-label="Cerrar error de canal"
+        class="rounded border border-bbp-border bg-bbp-bg/40 px-2.5 py-1 text-[0.6875rem] font-bold tracking-wider text-gray-400 transition-colors duration-200 hover:bg-bbp-bg"
+        @click="emit('dismissError')"
+      >
+        CERRAR
+      </button>
+    </div>
+
+    <div
+      v-if="hasPendingToggleChange && !showToggleConfirm && !patching"
       aria-live="polite"
       class="flex w-full min-w-0 flex-wrap items-center justify-between gap-2 rounded-md border border-bbp-border bg-bbp-bg/60 px-2.5 py-2"
     >
@@ -130,7 +171,7 @@ function confirmToggleChange(): void {
         {{ title }}
       </p>
       <p class="mt-0.5 text-center text-xs font-semibold text-gray-300">
-        {{ enabledLabel(model) }} → {{ enabledLabel(pendingEnabled ?? model) }}
+        {{ enabledLabel(active) }} → {{ enabledLabel(pendingEnabled ?? active) }}
       </p>
       <div class="mt-2 grid grid-cols-2 gap-2">
         <button
@@ -154,11 +195,15 @@ function confirmToggleChange(): void {
 
     <StrategySelector
       v-if="strategyOptions?.length"
-      v-model="strategy"
+      :model-value="strategyId"
       :options="strategyOptions"
       :select-label="`Seleccionar estrategia de ${title}`"
+      :patching="patching"
+      :error="patchError"
       embedded
       compact
+      @confirm="emit('confirmStrategy', $event)"
+      @dismiss-error="emit('dismissError')"
     />
   </div>
 </template>

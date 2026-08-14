@@ -1,10 +1,173 @@
-import { describe, expect, it, vi } from 'vitest'
-import { mount, type VueWrapper } from '@vue/test-utils'
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
+import { setActivePinia, createPinia } from 'pinia'
 import BacboproDashboard from '@/views/BacboproDashboard.vue'
+import { ApiError } from '@/api/client'
+import type { ChannelState, HistoryItem, OperationVm } from '@/api/types'
 
-describe('BacboproDashboard', () => {
-  it('renders the header with the MKBACBO identity and no version', () => {
-    const wrapper = mount(BacboproDashboard)
+const api = vi.hoisted(() => {
+  const oficialConfig: ChannelState = {
+    channel: 'oficial',
+    strategyId: 'streak-4',
+    active: true,
+    maxMartingalesOverride: null,
+  }
+  const pruebasConfig: ChannelState = {
+    channel: 'pruebas',
+    strategyId: null,
+    active: false,
+    maxMartingalesOverride: null,
+  }
+  const oficialOperation: OperationVm = {
+    operationId: 'op-1',
+    strategyId: 'streak-4',
+    recommendedWinner: 'PLAYER',
+    streakWinner: 'BANKER',
+    currentState: 'OPEN',
+    currentMartingale: 0,
+    reason: 'Racha de 4 resultados consecutivos de BANKER.',
+    openedAt: '2026-08-11T04:28:10.828Z',
+    closedAt: null,
+  }
+  const history: HistoryItem[] = Array.from({ length: 200 }, (_, index) => ({
+    roundId: `round-${index}`,
+    winner: index < 10 ? 'TIE' : index < 150 ? 'PLAYER' : 'BANKER',
+    score: 9,
+    playedAt: '2026-08-11T04:28:11.765Z',
+  }))
+
+  const state = {
+    oficial: { ...oficialConfig },
+    pruebas: { ...pruebasConfig },
+    oficialOperation: { ...oficialOperation },
+    history,
+  }
+
+  return { state, oficialConfig, pruebasConfig, oficialOperation }
+})
+
+vi.mock('@/api/endpoints', () => ({
+  getChannel: vi.fn((channel: 'oficial' | 'pruebas') =>
+    Promise.resolve({
+      data: { ...(channel === 'oficial' ? api.state.oficial : api.state.pruebas) },
+      requestId: 'r1',
+    }),
+  ),
+  getOperations: vi.fn((channel: 'oficial' | 'pruebas') =>
+    Promise.resolve({
+      data:
+        channel === 'oficial' && api.state.oficialOperation
+          ? [{ ...api.state.oficialOperation }]
+          : [],
+      requestId: 'r2',
+    }),
+  ),
+  getHistory: vi.fn(() =>
+    Promise.resolve({
+      data: [...api.state.history],
+      meta: { limit: 200, count: 200 },
+      requestId: 'r3',
+    }),
+  ),
+  getReportsSummary: vi.fn(() =>
+    Promise.resolve({
+      data: {
+        uptimeMs: 7385000,
+        oficial: { won: 8, lost: 2, alertsSent: 10 },
+        pruebas: { won: 0, lost: 0, alertsSent: 0 },
+      },
+      requestId: 'r4',
+    }),
+  ),
+  getStrategies: vi.fn(() =>
+    Promise.resolve({
+      data: [
+        {
+          id: 'streak-3',
+          name: 'Streak3Strategy',
+          description: 'Recomienda el ganador opuesto tras 3 resultados consecutivos iguales.',
+        },
+        {
+          id: 'streak-4',
+          name: 'Streak4Strategy',
+          description: 'Recomienda el ganador opuesto tras 4 resultados consecutivos iguales.',
+        },
+      ],
+      requestId: 'r5',
+    }),
+  ),
+  getHealth: vi.fn(() =>
+    Promise.resolve({
+      data: {
+        ok: true,
+        collectorConnected: true,
+        lastGameReceivedAt: '2026-08-11T03:17:21.710Z',
+        gamesInMemory: 200,
+        activeOperations: 0,
+        registeredStrategies: 2,
+        registeredChannels: 2,
+        lastError: null,
+        db: { ok: true, latencyMs: 486 },
+      },
+      requestId: 'r6',
+    }),
+  ),
+  patchChannel: vi.fn((channel: 'oficial' | 'pruebas', body: Partial<ChannelState>) => {
+    const target = channel === 'oficial' ? api.state.oficial : api.state.pruebas
+    const updated = { ...target, ...body }
+    if (channel === 'oficial') api.state.oficial = updated
+    else api.state.pruebas = updated
+    return Promise.resolve({ data: { ...updated }, requestId: 'r7' })
+  }),
+  cancelOperation: vi.fn((id: string) => {
+    const cancelled: OperationVm = {
+      ...api.state.oficialOperation,
+      operationId: id,
+      currentState: 'CANCELLED',
+      closedAt: '2026-08-11T04:30:00.000Z',
+    }
+    api.state.oficialOperation = cancelled
+    return Promise.resolve({ data: { ...cancelled }, requestId: 'r8' })
+  }),
+  postAdminReports: vi.fn(() =>
+    Promise.resolve({
+      data: {
+        channel: 'todos',
+        dispatchedAt: '2026-08-11T04:17:44.000Z',
+        metrics: { oficial: {}, pruebas: {} },
+      },
+      requestId: 'r9',
+    }),
+  ),
+  openEventsStream: vi.fn(() => Promise.resolve({ abort: vi.fn() })),
+}))
+
+import * as endpoints from '@/api/endpoints'
+
+describe('BacboproDashboard (integración API)', () => {
+  let wrapper: VueWrapper
+
+  beforeEach(() => {
+    api.state.oficial = { ...api.oficialConfig }
+    api.state.pruebas = { ...api.pruebasConfig }
+    api.state.oficialOperation = { ...api.oficialOperation }
+    vi.mocked(endpoints.patchChannel).mockClear()
+    vi.mocked(endpoints.cancelOperation).mockClear()
+    vi.mocked(endpoints.postAdminReports).mockClear()
+    vi.mocked(endpoints.openEventsStream).mockClear()
+    vi.mocked(endpoints.openEventsStream).mockImplementation(async () => ({
+      abort: vi.fn(),
+    }))
+    setActivePinia(createPinia())
+    wrapper = mount(BacboproDashboard)
+  })
+
+  afterEach(() => {
+    wrapper.unmount()
+  })
+
+  it('renders the MKBACBO identity and the real-time sync badge', async () => {
+    await flushPromises()
     expect(wrapper.text()).toContain('MKBACBO')
     expect(wrapper.text()).not.toContain('BACBOPRO')
     expect(wrapper.text()).not.toContain('V4.2')
@@ -12,377 +175,70 @@ describe('BacboproDashboard', () => {
     expect(wrapper.text()).toContain('MKBOT. VIP')
   })
 
-  it('renders both toggle cards with their toggles', () => {
-    const wrapper = mount(BacboproDashboard)
+  it('renders both channel cards with the state from GET /channels', async () => {
+    await flushPromises()
     expect(wrapper.text()).toContain('PRUEBAS TELEGRAM')
     expect(wrapper.text()).toContain('BAC BO OFICIAL')
     const switches = wrapper.findAll('[role="switch"]')
     expect(switches).toHaveLength(2)
-    expect(switches[0]?.attributes('aria-checked')).toBe('true')
+    expect(switches[0]?.attributes('aria-checked')).toBe('false')
     expect(switches[1]?.attributes('aria-checked')).toBe('true')
   })
 
-  it('renders one strategy selector inside each toggle card and no global selector', () => {
-    const wrapper = mount(BacboproDashboard)
-    expect(wrapper.text()).toContain('ESTRATEGIA')
-
+  it('populates the strategy selects from GET /strategies', async () => {
+    await flushPromises()
     const selects = wrapper.findAll('select')
     expect(selects).toHaveLength(2)
 
     const telegramSelect = wrapper.find('[aria-label="Seleccionar estrategia de PRUEBAS TELEGRAM"]')
     const officialSelect = wrapper.find('[aria-label="Seleccionar estrategia de BAC BO OFICIAL"]')
-    expect(telegramSelect.exists()).toBe(true)
-    expect(officialSelect.exists()).toBe(true)
-
-    expect(telegramSelect.findAll('option')).toHaveLength(3)
-    expect(officialSelect.findAll('option')).toHaveLength(3)
-
-    const toggleGrid = wrapper.find('aside [class*="grid-cols-2"]')
-    expect(toggleGrid.exists()).toBe(true)
-    expect(toggleGrid.findAll('select')).toHaveLength(2)
-    expect(toggleGrid.findAll('[aria-label="Selector de estrategia"]')).toHaveLength(2)
+    expect(telegramSelect.findAll('option')).toHaveLength(2)
+    expect(officialSelect.findAll('option')).toHaveLength(2)
+    expect((telegramSelect.element as HTMLSelectElement).value).toBe('')
+    expect((officialSelect.element as HTMLSelectElement).value).toBe('streak-4')
   })
 
-  describe('strategy confirmation flow', () => {
-    function telegramSelectOf(wrapper: VueWrapper) {
-      return wrapper.find('[aria-label="Seleccionar estrategia de PRUEBAS TELEGRAM"]')
-    }
-
-    function officialSelectOf(wrapper: VueWrapper) {
-      return wrapper.find('[aria-label="Seleccionar estrategia de BAC BO OFICIAL"]')
-    }
-
-    function strategySections(wrapper: VueWrapper) {
-      return wrapper.findAll('[aria-label="Selector de estrategia"]')
-    }
-
-    function buttonByText(section: ReturnType<VueWrapper['findAll']>[number], text: string) {
-      return section.findAll('button').find((button) => button.text() === text)
-    }
-
-    function selectValue(select: ReturnType<VueWrapper['find']>): string {
-      return (select.element as HTMLSelectElement).value
-    }
-
-    it('changing the select does not apply the strategy immediately', async () => {
-      const wrapper = mount(BacboproDashboard)
-      const telegramSelect = telegramSelectOf(wrapper)
-      await telegramSelect.setValue('estrategia-3')
-
-      expect(selectValue(telegramSelect)).toBe('estrategia-3')
-      const telegramSection = strategySections(wrapper)[0]!
-      expect(telegramSection.text()).toContain('CAMBIO PENDIENTE')
-      expect(buttonByText(telegramSection, 'GUARDAR')).toBeTruthy()
-      expect(buttonByText(telegramSection, 'CANCELAR')).toBeTruthy()
-      expect(telegramSection.text()).not.toContain('¿CONFIRMAR CAMBIO DE ESTRATEGIA?')
-      expect(selectValue(officialSelectOf(wrapper))).toBe('estrategia-2')
-    })
-
-    it('CANCELAR restores the active strategy and clears the pending change', async () => {
-      const wrapper = mount(BacboproDashboard)
-      const telegramSelect = telegramSelectOf(wrapper)
-      await telegramSelect.setValue('estrategia-3')
-
-      const telegramSection = strategySections(wrapper)[0]!
-      const cancelButton = buttonByText(telegramSection, 'CANCELAR')
-      expect(cancelButton).toBeTruthy()
-      if (cancelButton) await cancelButton.trigger('click')
-
-      expect(selectValue(telegramSelect)).toBe('estrategia-1')
-      expect(telegramSection.text()).not.toContain('CAMBIO PENDIENTE')
-      expect(buttonByText(telegramSection, 'GUARDAR')).toBeFalsy()
-      expect(buttonByText(telegramSection, 'CANCELAR')).toBeFalsy()
-    })
-
-    it('GUARDAR shows the confirmation step without applying the change', async () => {
-      const wrapper = mount(BacboproDashboard)
-      const telegramSelect = telegramSelectOf(wrapper)
-      await telegramSelect.setValue('estrategia-3')
-
-      const telegramSection = strategySections(wrapper)[0]!
-      const saveButton = buttonByText(telegramSection, 'GUARDAR')
-      expect(saveButton).toBeTruthy()
-      if (saveButton) await saveButton.trigger('click')
-
-      expect(telegramSection.text()).toContain('¿CONFIRMAR CAMBIO DE ESTRATEGIA?')
-      expect(telegramSection.text()).toContain('Estrategia 1 → Estrategia 3')
-      expect(buttonByText(telegramSection, 'CONFIRMAR')).toBeTruthy()
-      expect(buttonByText(telegramSection, 'CANCELAR')).toBeTruthy()
-      expect(selectValue(officialSelectOf(wrapper))).toBe('estrategia-2')
-    })
-
-    it('CONFIRMAR applies the new strategy and closes the pending state', async () => {
-      const wrapper = mount(BacboproDashboard)
-      const telegramSelect = telegramSelectOf(wrapper)
-      await telegramSelect.setValue('estrategia-3')
-
-      const telegramSection = strategySections(wrapper)[0]!
-      const saveButton = buttonByText(telegramSection, 'GUARDAR')
-      if (saveButton) await saveButton.trigger('click')
-      const confirmButton = buttonByText(telegramSection, 'CONFIRMAR')
-      expect(confirmButton).toBeTruthy()
-      if (confirmButton) await confirmButton.trigger('click')
-
-      expect(selectValue(telegramSelect)).toBe('estrategia-3')
-      expect(telegramSection.text()).not.toContain('CAMBIO PENDIENTE')
-      expect(telegramSection.text()).not.toContain('¿CONFIRMAR CAMBIO DE ESTRATEGIA?')
-      expect(buttonByText(telegramSection, 'GUARDAR')).toBeFalsy()
-    })
-
-    it('CANCELAR in the confirmation keeps the previous strategy', async () => {
-      const wrapper = mount(BacboproDashboard)
-      const telegramSelect = telegramSelectOf(wrapper)
-      await telegramSelect.setValue('estrategia-3')
-
-      const telegramSection = strategySections(wrapper)[0]!
-      const saveButton = buttonByText(telegramSection, 'GUARDAR')
-      if (saveButton) await saveButton.trigger('click')
-      const confirmCancelButton = buttonByText(telegramSection, 'CANCELAR')
-      expect(confirmCancelButton).toBeTruthy()
-      if (confirmCancelButton) await confirmCancelButton.trigger('click')
-
-      expect(selectValue(telegramSelect)).toBe('estrategia-1')
-      expect(telegramSection.text()).not.toContain('CAMBIO PENDIENTE')
-      expect(telegramSection.text()).not.toContain('¿CONFIRMAR CAMBIO DE ESTRATEGIA?')
-    })
-
-    it('selecting the same strategy does not trigger confirmation', async () => {
-      const wrapper = mount(BacboproDashboard)
-      const telegramSelect = telegramSelectOf(wrapper)
-      await telegramSelect.setValue('estrategia-1')
-
-      const telegramSection = strategySections(wrapper)[0]!
-      expect(telegramSection.text()).not.toContain('CAMBIO PENDIENTE')
-      expect(buttonByText(telegramSection, 'GUARDAR')).toBeFalsy()
-      expect(buttonByText(telegramSection, 'CANCELAR')).toBeFalsy()
-    })
-
-    it('Telegram and Bac Bo keep independent states through the full flow', async () => {
-      const wrapper = mount(BacboproDashboard)
-
-      const telegramSection = strategySections(wrapper)[0]!
-      const officialSection = strategySections(wrapper)[1]!
-
-      const telegramSelect = telegramSelectOf(wrapper)
-      await telegramSelect.setValue('estrategia-3')
-      const telegramSave = buttonByText(telegramSection, 'GUARDAR')
-      if (telegramSave) await telegramSave.trigger('click')
-      const telegramConfirm = buttonByText(telegramSection, 'CONFIRMAR')
-      if (telegramConfirm) await telegramConfirm.trigger('click')
-
-      expect(selectValue(telegramSelect)).toBe('estrategia-3')
-      expect(selectValue(officialSelectOf(wrapper))).toBe('estrategia-2')
-
-      const officialSelect = officialSelectOf(wrapper)
-      await officialSelect.setValue('estrategia-1')
-      const officialSave = buttonByText(officialSection, 'GUARDAR')
-      if (officialSave) await officialSave.trigger('click')
-      const officialConfirm = buttonByText(officialSection, 'CONFIRMAR')
-      if (officialConfirm) await officialConfirm.trigger('click')
-
-      expect(selectValue(officialSelect)).toBe('estrategia-1')
-      expect(selectValue(telegramSelect)).toBe('estrategia-3')
-    })
-
-    it('toggling ON/OFF does not change the strategy', async () => {
-      const wrapper = mount(BacboproDashboard)
-      const telegramSelect = telegramSelectOf(wrapper)
-      const switches = wrapper.findAll('[role="switch"]')
-
-      await switches[0]?.trigger('click')
-      expect(selectValue(telegramSelect)).toBe('estrategia-1')
-
-      await switches[0]?.trigger('click')
-      expect(selectValue(telegramSelect)).toBe('estrategia-1')
-
-      const telegramSection = strategySections(wrapper)[0]!
-      expect(telegramSection.text()).not.toContain('CAMBIO PENDIENTE')
-    })
-
-    it('does not use window.confirm', async () => {
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
-      const wrapper = mount(BacboproDashboard)
-
-      const telegramSelect = telegramSelectOf(wrapper)
-      await telegramSelect.setValue('estrategia-3')
-      const telegramSection = strategySections(wrapper)[0]!
-      const saveButton = buttonByText(telegramSection, 'GUARDAR')
-      if (saveButton) await saveButton.trigger('click')
-      const confirmButton = buttonByText(telegramSection, 'CONFIRMAR')
-      if (confirmButton) await confirmButton.trigger('click')
-
-      expect(selectValue(telegramSelect)).toBe('estrategia-3')
-      expect(confirmSpy).not.toHaveBeenCalled()
-      confirmSpy.mockRestore()
-    })
-  })
-
-  describe('channel state confirmation flow', () => {
-    function cardOf(wrapper: VueWrapper, title: string) {
-      return wrapper.find(`[aria-label="${title}"]`)
-    }
-
-    function switchOf(wrapper: VueWrapper, title: string) {
-      return wrapper.find(`[aria-label="Activar ${title}"]`)
-    }
-
-    async function changeStateAndConfirm(wrapper: VueWrapper, title: string) {
-      const card = cardOf(wrapper, title)
-      const toggle = switchOf(wrapper, title)
-      await toggle.trigger('click')
-      const save = card.find('[aria-label="Guardar cambio de estado"]')
-      if (save.exists()) await save.trigger('click')
-      const confirm = card.find('[aria-label="Confirmar cambio de estado"]')
-      if (confirm.exists()) await confirm.trigger('click')
-      return toggle
-    }
-
-    it('clicking the switch does not change the active state immediately', async () => {
-      const wrapper = mount(BacboproDashboard)
-      const telegramCard = cardOf(wrapper, 'PRUEBAS TELEGRAM')
-      const telegramSwitch = switchOf(wrapper, 'PRUEBAS TELEGRAM')
-
-      await telegramSwitch.trigger('click')
-
-      expect(telegramSwitch.attributes('aria-checked')).toBe('false')
-      expect(telegramCard.text()).toContain('CAMBIO DE ESTADO PENDIENTE')
-      expect(telegramCard.find('[aria-label="Guardar cambio de estado"]').exists()).toBe(true)
-      expect(telegramCard.find('[aria-label="Cancelar cambio de estado"]').exists()).toBe(true)
-      expect(telegramCard.text()).not.toContain('¿CONFIRMAR CAMBIO DE ESTADO?')
-    })
-
-    it('CANCELAR restores the original state', async () => {
-      const wrapper = mount(BacboproDashboard)
-      const telegramCard = cardOf(wrapper, 'PRUEBAS TELEGRAM')
-      const telegramSwitch = switchOf(wrapper, 'PRUEBAS TELEGRAM')
-
-      await telegramSwitch.trigger('click')
-      const cancel = telegramCard.find('[aria-label="Cancelar cambio de estado"]')
-      await cancel.trigger('click')
-
-      expect(telegramSwitch.attributes('aria-checked')).toBe('true')
-      expect(telegramCard.text()).not.toContain('CAMBIO DE ESTADO PENDIENTE')
-      expect(telegramCard.text()).not.toContain('¿CONFIRMAR CAMBIO DE ESTADO?')
-    })
-
-    it('GUARDAR opens the confirmation without applying the change', async () => {
-      const wrapper = mount(BacboproDashboard)
-      const telegramCard = cardOf(wrapper, 'PRUEBAS TELEGRAM')
-      const telegramSwitch = switchOf(wrapper, 'PRUEBAS TELEGRAM')
-
-      await telegramSwitch.trigger('click')
-      const save = telegramCard.find('[aria-label="Guardar cambio de estado"]')
-      await save.trigger('click')
-
-      expect(telegramCard.text()).toContain('¿CONFIRMAR CAMBIO DE ESTADO?')
-      expect(telegramCard.text()).toContain('ON → OFF')
-      expect(telegramCard.find('[aria-label="Confirmar cambio de estado"]').exists()).toBe(true)
-      expect(telegramCard.find('[aria-label="Cancelar confirmación de estado"]').exists()).toBe(
-        true,
-      )
-    })
-
-    it('CONFIRMAR applies the new state and closes the pending flow', async () => {
-      const wrapper = mount(BacboproDashboard)
-      const telegramCard = cardOf(wrapper, 'PRUEBAS TELEGRAM')
-      const telegramSwitch = await changeStateAndConfirm(wrapper, 'PRUEBAS TELEGRAM')
-
-      expect(telegramSwitch.attributes('aria-checked')).toBe('false')
-      expect(telegramCard.text()).not.toContain('CAMBIO DE ESTADO PENDIENTE')
-      expect(telegramCard.text()).not.toContain('¿CONFIRMAR CAMBIO DE ESTADO?')
-    })
-
-    it('CANCELAR in the confirmation keeps the previous state', async () => {
-      const wrapper = mount(BacboproDashboard)
-      const telegramCard = cardOf(wrapper, 'PRUEBAS TELEGRAM')
-      const telegramSwitch = switchOf(wrapper, 'PRUEBAS TELEGRAM')
-
-      await telegramSwitch.trigger('click')
-      const save = telegramCard.find('[aria-label="Guardar cambio de estado"]')
-      await save.trigger('click')
-      const confirmCancel = telegramCard.find('[aria-label="Cancelar confirmación de estado"]')
-      await confirmCancel.trigger('click')
-
-      expect(telegramSwitch.attributes('aria-checked')).toBe('true')
-      expect(telegramCard.text()).not.toContain('CAMBIO DE ESTADO PENDIENTE')
-      expect(telegramCard.text()).not.toContain('¿CONFIRMAR CAMBIO DE ESTADO?')
-    })
-
-    it('OFF to ON requires confirmation too', async () => {
-      const wrapper = mount(BacboproDashboard)
-      const telegramCard = cardOf(wrapper, 'PRUEBAS TELEGRAM')
-      const telegramSwitch = await changeStateAndConfirm(wrapper, 'PRUEBAS TELEGRAM')
-      expect(telegramSwitch.attributes('aria-checked')).toBe('false')
-
-      await telegramSwitch.trigger('click')
-      const save = telegramCard.find('[aria-label="Guardar cambio de estado"]')
-      await save.trigger('click')
-      expect(telegramCard.text()).toContain('OFF → ON')
-
-      const confirm = telegramCard.find('[aria-label="Confirmar cambio de estado"]')
-      await confirm.trigger('click')
-      expect(telegramSwitch.attributes('aria-checked')).toBe('true')
-    })
-
-    it('Telegram and Bac Bo keep independent states', async () => {
-      const wrapper = mount(BacboproDashboard)
-      await changeStateAndConfirm(wrapper, 'PRUEBAS TELEGRAM')
-
-      const officialSwitch = switchOf(wrapper, 'BAC BO OFICIAL')
-      const officialCard = cardOf(wrapper, 'BAC BO OFICIAL')
-      expect(officialSwitch.attributes('aria-checked')).toBe('true')
-      expect(officialCard.text()).not.toContain('CAMBIO DE ESTADO PENDIENTE')
-    })
-
-    it('changing ON/OFF does not modify the strategy', async () => {
-      const wrapper = mount(BacboproDashboard)
-      const telegramSelect = wrapper.find('[aria-label="Seleccionar estrategia de PRUEBAS TELEGRAM"]')
-
-      await changeStateAndConfirm(wrapper, 'PRUEBAS TELEGRAM')
-
-      expect((telegramSelect.element as HTMLSelectElement).value).toBe('estrategia-1')
-    })
-
-    it('changing the strategy does not modify ON/OFF', async () => {
-      const wrapper = mount(BacboproDashboard)
-      const telegramSwitch = switchOf(wrapper, 'PRUEBAS TELEGRAM')
-      const telegramSelect = wrapper.find('[aria-label="Seleccionar estrategia de PRUEBAS TELEGRAM"]')
-
-      await telegramSelect.setValue('estrategia-3')
-      expect(telegramSwitch.attributes('aria-checked')).toBe('true')
-
-      const telegramSection = wrapper.findAll('[aria-label="Selector de estrategia"]')[0]!
-      const save = telegramSection.findAll('button').find((button) => button.text() === 'GUARDAR')
-      if (save) await save.trigger('click')
-      const confirm = telegramSection.findAll('button').find((button) => button.text() === 'CONFIRMAR')
-      if (confirm) await confirm.trigger('click')
-
-      expect(telegramSwitch.attributes('aria-checked')).toBe('true')
-      expect((telegramSelect.element as HTMLSelectElement).value).toBe('estrategia-3')
-    })
-
-    it('does not use window.confirm for state changes', async () => {
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
-      const wrapper = mount(BacboproDashboard)
-
-      await changeStateAndConfirm(wrapper, 'PRUEBAS TELEGRAM')
-
-      expect(confirmSpy).not.toHaveBeenCalled()
-      confirmSpy.mockRestore()
-    })
-  })
-
-  it('renders the four KPIs with the timer in mono value', () => {
-    const wrapper = mount(BacboproDashboard)
+  it('renders the KPIs from the oficial channel of GET /reports/summary', async () => {
+    await flushPromises()
     expect(wrapper.text()).toContain('WINS')
     expect(wrapper.text()).toContain('ALERTAS ENVIADAS')
     expect(wrapper.text()).toContain('LOST')
     expect(wrapper.text()).toContain('TIEMPO')
-    expect(wrapper.text()).toContain('04:16:19')
+    expect(wrapper.text()).toContain('8')
+    expect(wrapper.text()).toContain('10')
+    expect(wrapper.text()).toContain('2')
+    expect(wrapper.text()).toContain('02:03:05')
   })
 
-  it('renders the streak board as generated columns capped at 6 rows', () => {
-    const wrapper = mount(BacboproDashboard)
+  it('shows empty KPIs when the summary cannot be loaded', async () => {
+    vi.mocked(endpoints.getReportsSummary).mockRejectedValueOnce(
+      new ApiError({ code: 'UNAUTHORIZED', message: 'Unauthorized', httpStatus: 401 }),
+    )
+    wrapper.unmount()
+    setActivePinia(createPinia())
+    wrapper = mount(BacboproDashboard)
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('02:03:05')
+    const dashValues = wrapper.text().match(/—/g) ?? []
+    expect(dashValues.length).toBeGreaterThanOrEqual(4)
+  })
+
+  it('renders both stats windows computed from the API history', async () => {
+    await flushPromises()
+    const stats = wrapper.find('[aria-label="Estadísticas"]')
+    expect(stats.exists()).toBe(true)
+    expect(stats.findAll('h3')).toHaveLength(2)
+    expect(wrapper.text()).toContain('ÚLTIMAS 200')
+    expect(wrapper.text()).toContain('ÚLTIMAS 50')
+    expect(wrapper.text()).not.toContain('ÚLTIMAS 100')
+    expect(wrapper.text()).toContain('70%')
+    expect(wrapper.text()).toContain('25%')
+    expect(wrapper.text()).toContain('100%')
+  })
+
+  it('renders the streak board capped at 14 columns of at most 6 rows', async () => {
+    await flushPromises()
     const columns = wrapper.findAll('.streak-column')
     expect(columns).toHaveLength(14)
     for (const column of columns) {
@@ -392,49 +248,254 @@ describe('BacboproDashboard', () => {
     }
   })
 
-  it('renders the unified last plays panel as a 16x10 grid with both stats subsections', () => {
-    const wrapper = mount(BacboproDashboard)
-    expect(wrapper.text()).toContain('ÚLTIMAS JUGADAS')
-    expect(wrapper.text()).toContain('ÚLTIMAS 200')
-    expect(wrapper.text()).toContain('ÚLTIMAS 100')
-    const historyCells = wrapper.findAll('[aria-label="Historial de últimas 200 jugadas"] [role="img"]')
+  it('renders the 16x10 last plays board from the API history', async () => {
+    await flushPromises()
+    const historyCells = wrapper.findAll(
+      '[aria-label="Historial de últimas 200 jugadas"] [role="img"]',
+    )
     expect(historyCells).toHaveLength(16 * 10)
-    expect(wrapper.text()).toContain('45%')
-    expect(wrapper.text()).toContain('9%')
-    expect(wrapper.text()).toContain('46%')
-    expect(wrapper.text()).toContain('48%')
-    expect(wrapper.text()).toContain('8%')
-    expect(wrapper.text()).toContain('44%')
+
+    const cellClasses = historyCells.map((cell) => cell.classes())
+    expect(cellClasses.some((classes) => classes.includes('bg-bbp-player'))).toBe(true)
+    expect(cellClasses.some((classes) => classes.includes('bg-bbp-banker'))).toBe(true)
   })
 
-  it('renders a single winner indicator with matching color and no sync section', () => {
-    const wrapper = mount(BacboproDashboard)
-    expect(wrapper.text()).toContain('ÚLTIMO GANADOR')
+  it('renders the last winner from the newest history item', async () => {
+    await flushPromises()
     const indicators = wrapper.findAll('[role="img"][aria-label^="Último ganador:"]')
     expect(indicators).toHaveLength(1)
     expect(indicators[0]?.attributes('aria-label')).toBe('Último ganador: BANKER')
-    expect(wrapper.text()).not.toContain('SYNC CON EL CASINO')
   })
 
-  it('renders the current operation entry with alert, game, pattern and bet info', () => {
-    const wrapper = mount(BacboproDashboard)
+  it('renders the oficial operation and an empty state for pruebas', async () => {
+    await flushPromises()
     expect(wrapper.text()).toContain('OPERACIÓN ACTUAL')
-    expect(wrapper.text()).toContain('🚨')
     expect(wrapper.text()).toContain('NUEVA ENTRADA')
-    expect(wrapper.text()).toContain('🎯 JUEGO:')
-    expect(wrapper.text()).toContain('Bac Bo - Evolution')
-    expect(wrapper.text()).toContain('📊 PATRON:')
-    expect(wrapper.text()).toContain('streak-3')
-    expect(wrapper.text()).toContain('💣 INGRESAR DESPUES DE:')
+    expect(wrapper.text()).toContain('streak-4')
+    expect(wrapper.text()).toContain('Racha de 4 resultados consecutivos de BANKER.')
     expect(wrapper.text()).toContain('🔵')
-    expect(wrapper.text()).toContain('🔥 APUESTA EN:')
     expect(wrapper.text()).toContain('🔴')
-    expect(wrapper.text()).toContain('🔁 MARTINGALAS MAXIMO:')
-    expect(wrapper.text()).not.toContain('OBJETIVO DIARIO')
-    expect(wrapper.text()).not.toContain('$5,000')
-    expect(wrapper.text()).not.toContain('$1,250')
-    expect(wrapper.text()).not.toContain('EN CURSO')
-    expect(wrapper.text()).not.toContain('Siguiente apuesta')
-    expect(wrapper.text()).not.toContain('RECOMENDACIÓN')
+    expect(wrapper.text()).toContain('MARTINGALAS MAXIMO:')
+    const emptyStates = wrapper.findAll('p').filter((p) => p.text() === 'SIN OPERACIÓN ACTIVA')
+    expect(emptyStates).toHaveLength(1)
+  })
+
+  it('shows empty operation cards when no operation is active', async () => {
+    api.state.oficialOperation = null
+    wrapper.unmount()
+    setActivePinia(createPinia())
+    wrapper = mount(BacboproDashboard)
+    await flushPromises()
+
+    const emptyStates = wrapper.findAll('p').filter((p) => p.text() === 'SIN OPERACIÓN ACTIVA')
+    expect(emptyStates).toHaveLength(2)
+    expect(wrapper.text()).not.toContain('NUEVA ENTRADA')
+  })
+
+  describe('strategy confirmation flow (PATCH /channels)', () => {
+    it('does not apply the strategy immediately and keeps channels independent', async () => {
+      await flushPromises()
+      const officialSelect = wrapper.find(
+        '[aria-label="Seleccionar estrategia de BAC BO OFICIAL"]',
+      )
+      const telegramSelect = wrapper.find(
+        '[aria-label="Seleccionar estrategia de PRUEBAS TELEGRAM"]',
+      )
+      await officialSelect.setValue('streak-3')
+
+      expect((officialSelect.element as HTMLSelectElement).value).toBe('streak-3')
+      expect((telegramSelect.element as HTMLSelectElement).value).toBe('')
+      expect(wrapper.text()).toContain('CAMBIO PENDIENTE')
+      expect(vi.mocked(endpoints.patchChannel)).not.toHaveBeenCalled()
+    })
+
+    it('CANCELAR restores the active strategy', async () => {
+      await flushPromises()
+      const officialSelect = wrapper.find(
+        '[aria-label="Seleccionar estrategia de BAC BO OFICIAL"]',
+      )
+      await officialSelect.setValue('streak-3')
+
+      const sections = wrapper.findAll('[aria-label="Selector de estrategia"]')
+      const officialSection = sections[1]!
+      const cancelButton = officialSection
+        .findAll('button')
+        .find((button) => button.text() === 'CANCELAR')
+      if (cancelButton) await cancelButton.trigger('click')
+
+      expect((officialSelect.element as HTMLSelectElement).value).toBe('streak-4')
+      expect(officialSection.text()).not.toContain('CAMBIO PENDIENTE')
+      expect(vi.mocked(endpoints.patchChannel)).not.toHaveBeenCalled()
+    })
+
+    it('CONFIRMAR sends PATCH and updates the active strategy', async () => {
+      await flushPromises()
+      const officialSelect = wrapper.find(
+        '[aria-label="Seleccionar estrategia de BAC BO OFICIAL"]',
+      )
+      await officialSelect.setValue('streak-3')
+
+      const sections = wrapper.findAll('[aria-label="Selector de estrategia"]')
+      const officialSection = sections[1]!
+      const saveButton = officialSection
+        .findAll('button')
+        .find((button) => button.text() === 'GUARDAR')
+      if (saveButton) await saveButton.trigger('click')
+      expect(officialSection.text()).toContain('¿CONFIRMAR CAMBIO DE ESTRATEGIA?')
+      expect(officialSection.text()).toContain('streak-4 → streak-3')
+
+      const confirmButton = officialSection
+        .findAll('button')
+        .find((button) => button.text() === 'CONFIRMAR')
+      if (confirmButton) await confirmButton.trigger('click')
+      await flushPromises()
+
+      expect(vi.mocked(endpoints.patchChannel)).toHaveBeenCalledWith('oficial', {
+        strategyId: 'streak-3',
+      })
+      expect((officialSelect.element as HTMLSelectElement).value).toBe('streak-3')
+      expect(officialSection.text()).not.toContain('CAMBIO PENDIENTE')
+    })
+  })
+
+  describe('channel state confirmation flow (PATCH /channels)', () => {
+    it('clicking the switch shows the pending state without applying it', async () => {
+      await flushPromises()
+      const telegramCard = wrapper.find('[aria-label="PRUEBAS TELEGRAM"]')
+      const telegramSwitch = wrapper.find('[aria-label="Activar PRUEBAS TELEGRAM"]')
+
+      await telegramSwitch.trigger('click')
+      await flushPromises()
+
+      expect(telegramSwitch.attributes('aria-checked')).toBe('true')
+      expect(telegramCard.text()).toContain('CAMBIO DE ESTADO PENDIENTE')
+      expect(vi.mocked(endpoints.patchChannel)).not.toHaveBeenCalled()
+    })
+
+    it('CANCELAR restores the original state', async () => {
+      await flushPromises()
+      const telegramCard = wrapper.find('[aria-label="PRUEBAS TELEGRAM"]')
+      const telegramSwitch = wrapper.find('[aria-label="Activar PRUEBAS TELEGRAM"]')
+
+      await telegramSwitch.trigger('click')
+      const cancel = telegramCard.find('[aria-label="Cancelar cambio de estado"]')
+      await cancel.trigger('click')
+      await flushPromises()
+
+      expect(telegramSwitch.attributes('aria-checked')).toBe('false')
+      expect(telegramCard.text()).not.toContain('CAMBIO DE ESTADO PENDIENTE')
+      expect(vi.mocked(endpoints.patchChannel)).not.toHaveBeenCalled()
+    })
+
+    it('CONFIRMAR sends PATCH and applies the new state', async () => {
+      await flushPromises()
+      const telegramCard = wrapper.find('[aria-label="PRUEBAS TELEGRAM"]')
+      const telegramSwitch = wrapper.find('[aria-label="Activar PRUEBAS TELEGRAM"]')
+
+      await telegramSwitch.trigger('click')
+      const save = telegramCard.find('[aria-label="Guardar cambio de estado"]')
+      await save.trigger('click')
+      expect(telegramCard.text()).toContain('¿CONFIRMAR CAMBIO DE ESTADO?')
+      expect(telegramCard.text()).toContain('OFF → ON')
+
+      const confirm = telegramCard.find('[aria-label="Confirmar cambio de estado"]')
+      await confirm.trigger('click')
+      await flushPromises()
+
+      expect(vi.mocked(endpoints.patchChannel)).toHaveBeenCalledWith('pruebas', {
+        active: true,
+      })
+      expect(telegramSwitch.attributes('aria-checked')).toBe('true')
+
+      const officialSwitch = wrapper.find('[aria-label="Activar BAC BO OFICIAL"]')
+      expect(officialSwitch.attributes('aria-checked')).toBe('true')
+    })
+  })
+
+  describe('cancel operation flow (POST /operations/:id/cancel)', () => {
+    it('requires confirmation and updates the card after cancelling', async () => {
+      await flushPromises()
+      const cancelButton = wrapper
+        .findAll('button')
+        .find((button) => button.text() === 'CANCELAR OPERACIÓN')
+      expect(cancelButton).toBeTruthy()
+      if (!cancelButton) return
+
+      await cancelButton.trigger('click')
+      expect(wrapper.text()).toContain('¿CONFIRMAR CANCELACIÓN DE OPERACIÓN?')
+      expect(vi.mocked(endpoints.cancelOperation)).not.toHaveBeenCalled()
+
+      const confirmButton = wrapper
+        .findAll('button')
+        .find((button) => button.text() === 'SÍ, CANCELAR')
+      expect(confirmButton).toBeTruthy()
+      if (!confirmButton) return
+
+      await confirmButton.trigger('click')
+      await flushPromises()
+
+      expect(vi.mocked(endpoints.cancelOperation)).toHaveBeenCalledWith('op-1')
+      expect(wrapper.text()).toContain('OPERACIÓN CANCELADA')
+    })
+  })
+
+  describe('send report flow (POST /admin/reports)', () => {
+    it('requires confirmation and disables double sends', async () => {
+      await flushPromises()
+      const sendButton = wrapper
+        .findAll('button')
+        .find((button) => button.text() === 'ENVIAR RESUMEN')
+      expect(sendButton).toBeTruthy()
+      if (!sendButton) return
+
+      await sendButton.trigger('click')
+      expect(wrapper.text()).toContain('¿ENVIAR RESUMEN A TELEGRAM?')
+
+      const yesButton = wrapper.findAll('button').find((button) => button.text() === 'SÍ')
+      if (!yesButton) return
+      await yesButton.trigger('click')
+      await flushPromises()
+
+      expect(vi.mocked(endpoints.postAdminReports)).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('connection states', () => {
+    it('shows the disconnected badge and banner when the stream fails', async () => {
+      vi.mocked(endpoints.openEventsStream).mockRejectedValueOnce(
+        new ApiError({ code: 'NETWORK_ERROR', message: 'se cayó', httpStatus: null }),
+      )
+      wrapper.unmount()
+      setActivePinia(createPinia())
+      wrapper = mount(BacboproDashboard)
+      await flushPromises()
+
+      expect(wrapper.text()).toContain('CASINO SYNC: DESCONECTADO')
+      expect(wrapper.text()).toContain('SIN CONEXIÓN EN VIVO')
+      expect(wrapper.text()).toContain('RECONECTAR')
+    })
+  })
+
+  it('does not use window.confirm for confirmations', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    await flushPromises()
+
+    const officialSelect = wrapper.find(
+      '[aria-label="Seleccionar estrategia de BAC BO OFICIAL"]',
+    )
+    await officialSelect.setValue('streak-3')
+    const sections = wrapper.findAll('[aria-label="Selector de estrategia"]')
+    const officialSection = sections[1]!
+    const saveButton = officialSection
+      .findAll('button')
+      .find((button) => button.text() === 'GUARDAR')
+    if (saveButton) await saveButton.trigger('click')
+    const confirmButton = officialSection
+      .findAll('button')
+      .find((button) => button.text() === 'CONFIRMAR')
+    if (confirmButton) await confirmButton.trigger('click')
+
+    expect(confirmSpy).not.toHaveBeenCalled()
+    confirmSpy.mockRestore()
   })
 })

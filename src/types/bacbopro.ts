@@ -35,13 +35,16 @@ export interface StrategyOption {
   label: string
 }
 
-export type OperationSide = 'player' | 'banker'
+export type OperationSide = 'player' | 'banker' | 'tie'
+
+export type OperationDisplayState = 'OPEN' | 'MG1' | 'MG2' | 'WON' | 'LOST' | 'CANCELLED'
 
 export interface OperationEntry {
   alertLabel: string
-  game: string
+  strategyId: string
   pattern: string
   entryAfterSide: OperationSide
   betOnSide: OperationSide
   maxMartingales: number
+  state: OperationDisplayState
 }

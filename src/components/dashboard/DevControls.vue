@@ -46,10 +46,10 @@ const OPERATION_STATES: OperationState[] = ['MG1', 'MG2', 'EP', 'WAITING', 'WIN'
 <style scoped>
 .dev-controls {
   background: var(--color-surface-dark);
-  border: 1px solid var(--color-dev-border, #334155);
-  border-radius: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  margin: 1rem 1rem 0;
+  border: 1px solid var(--color-dev-border, #1f1f1f);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin: 16px 16px 0;
 }
 
 .dev-controls__toggle {
@@ -64,7 +64,8 @@ const OPERATION_STATES: OperationState[] = ['MG1', 'MG2', 'EP', 'WAITING', 'WIN'
 }
 
 .dev-controls__toggle:hover {
-  background: rgba(245, 158, 11, 0.1);
+  background: rgba(255, 158, 0, 0.1);
+  background: color-mix(in srgb, var(--color-waiting) 10%, transparent);
 }
 
 .dev-controls__panel {
