@@ -10,7 +10,10 @@ defineProps<Props>()
 </script>
 
 <template>
-  <section aria-label="Indicadores clave" class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+  <section
+    aria-label="Indicadores clave"
+    class="grid w-full min-w-0 grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"
+  >
     <KpiCard v-for="item in items" :key="item.label" :item="item" />
   </section>
 </template>

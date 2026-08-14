@@ -17,7 +17,7 @@ const stateLabels: Record<Outcome, string> = {
 
 <template>
   <span
-    class="inline-block h-2.5 w-2.5 rounded-full sm:h-3.5 sm:w-3.5 md:h-4 md:w-4"
+    class="inline-block h-2.5 w-2.5 shrink-0 rounded-full sm:h-3.5 sm:w-3.5 md:h-4 md:w-4 xl:h-5 xl:w-5"
     :class="{
       'bg-bbp-player': state === 'player',
       'bg-bbp-banker': state === 'banker',

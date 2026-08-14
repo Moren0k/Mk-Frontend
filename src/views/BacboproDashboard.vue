@@ -14,12 +14,15 @@ import { statsLast100, statsLast200 } from '@/mocks/bacbopro/historyData'
 import { kpiItems } from '@/mocks/bacbopro/kpiData'
 import { operationData } from '@/mocks/bacbopro/operationData'
 import { lastWinnerData } from '@/mocks/bacbopro/winnerData'
+import { strategyOptions } from '@/mocks/bacbopro/strategyData'
 
 import telegramLogo from '@/assets/images/MKBACBO_PRUEBA.png'
 import oficialLogo from '@/assets/images/MKBACBO_OFICIAL.png'
 
 const telegramActive = ref(true)
 const bacBoActive = ref(true)
+const telegramStrategy = ref(strategyOptions[0]?.id ?? '')
+const officialStrategy = ref(strategyOptions[1]?.id ?? '')
 
 const statsBlocks = [statsLast200, statsLast100]
 </script>
@@ -27,31 +30,42 @@ const statsBlocks = [statsLast200, statsLast100]
 <template>
   <div class="min-h-screen bg-bbp-bg font-sans text-gray-100">
     <BacboproHeader />
-    <div
-      class="mx-auto grid max-w-[1440px] grid-cols-1 gap-4 px-4 py-3 sm:px-6 sm:py-4 lg:grid-cols-[minmax(0,2.4fr)_minmax(270px,1fr)] lg:gap-5"
+    <main
+      class="mx-auto grid w-full max-w-[1600px] grid-cols-1 items-start gap-4 px-4 py-3 sm:px-6 sm:py-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.38fr)] lg:gap-5"
     >
-      <main class="flex flex-col content-start gap-4">
-        <KpiGrid :items="kpiItems" />
-        <StreakBoard :columns="streakColumns" />
-        <HistoryPanel :grid="historyGrid" :stats-blocks="statsBlocks" />
-      </main>
-      <aside class="content-start">
-        <div class="overflow-hidden rounded-lg border border-bbp-border bg-bbp-panel">
-          <div class="grid grid-cols-2 divide-x divide-bbp-border border-b border-bbp-border">
+      <KpiGrid
+        class="min-w-0 lg:col-start-1 lg:row-start-1"
+        :items="kpiItems"
+      />
+      <StreakBoard
+        class="min-w-0 lg:col-start-1 lg:row-start-2"
+        :columns="streakColumns"
+      />
+      <aside
+        class="min-w-0 max-w-full content-start lg:col-start-2 lg:row-start-1 lg:row-span-3"
+      >
+        <div class="min-w-0 max-w-full overflow-hidden rounded-lg border border-bbp-border bg-bbp-panel">
+          <div
+            class="grid grid-cols-1 divide-y divide-bbp-border border-b border-bbp-border sm:grid-cols-2 sm:divide-x sm:divide-y-0"
+          >
             <ToggleCard
               v-model="telegramActive"
+              v-model:strategy="telegramStrategy"
               :logo="telegramLogo"
               logo-alt="PRUEBAS TELEGRAM"
               tone="banker"
               title="PRUEBAS TELEGRAM"
+              :strategy-options="strategyOptions"
               embedded
             />
             <ToggleCard
               v-model="bacBoActive"
+              v-model:strategy="officialStrategy"
               :logo="oficialLogo"
               logo-alt="BAC BO OFICIAL"
               tone="player"
               title="BAC BO OFICIAL"
+              :strategy-options="strategyOptions"
               embedded
             />
           </div>
@@ -61,6 +75,11 @@ const statsBlocks = [statsLast200, statsLast100]
           <OperationCard :operation="operationData" embedded />
         </div>
       </aside>
-    </div>
+      <HistoryPanel
+        class="min-w-0 lg:col-start-1 lg:row-start-3"
+        :grid="historyGrid"
+        :stats-blocks="statsBlocks"
+      />
+    </main>
   </div>
 </template>

@@ -30,6 +30,11 @@ export interface StatsBlock {
   segments: StatsSegment[]
 }
 
+export interface StrategyOption {
+  id: string
+  label: string
+}
+
 export type OperationSide = 'player' | 'banker'
 
 export interface OperationEntry {

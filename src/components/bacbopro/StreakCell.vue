@@ -17,7 +17,7 @@ const stateLabels: Record<StreakCellState, string> = {
 
 <template>
   <span
-    class="inline-block h-5 w-5 rounded-full sm:h-6 sm:w-6 md:h-8 md:w-8 lg:h-9 lg:w-9"
+    class="inline-block h-5 w-5 shrink-0 rounded-full sm:h-6 sm:w-6 md:h-7 md:w-7 lg:h-8 lg:w-8 xl:h-9 xl:w-9"
     :class="{
       'bg-bbp-player': state === 'player',
       'bg-bbp-banker': state === 'banker',
