@@ -9,10 +9,8 @@ body {
 #app {
   display: flex;
   flex-direction: column;
-  width: 80%;
-  max-width: none;
-  margin: 0 auto;
+  width: 100%;
   min-height: 100vh;
   min-height: 100dvh;
-  background: #000000;
+  background: var(--color-bbp-bg);
 }

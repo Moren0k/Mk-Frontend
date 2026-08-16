@@ -3,9 +3,14 @@ import type { StreakCellState } from '@/types/bacbopro'
 
 interface Props {
   state: StreakCellState
+  /** Celda de la PRÓXIMA jugada esperada (alerta oficial abierta): parpadea
+   * con el color de `state` ('player' o 'banker'); no es un resultado real. */
+  pending?: boolean
 }
 
-defineProps<Props>()
+withDefaults(defineProps<Props>(), {
+  pending: false,
+})
 
 const stateLabels: Record<StreakCellState, string> = {
   player: 'Player',
@@ -17,17 +22,21 @@ const stateLabels: Record<StreakCellState, string> = {
 
 <template>
   <span
-    class="inline-block h-5 w-5 shrink-0 rounded-full sm:h-6 sm:w-6 md:h-7 md:w-7 lg:h-8 lg:w-8 xl:h-9 xl:w-9"
+    class="aspect-square w-full min-w-[4px] rounded-full"
     :class="{
-      'bg-bbp-player shadow-[0_0_6px_color-mix(in_srgb,var(--color-bbp-player)_45%,transparent)]':
+      'bg-bbp-player shadow-[0_0_4px_color-mix(in_srgb,var(--color-bbp-player)_40%,transparent)]':
         state === 'player',
-      'bg-bbp-banker shadow-[0_0_6px_color-mix(in_srgb,var(--color-bbp-banker)_45%,transparent)]':
+      'bg-bbp-banker shadow-[0_0_4px_color-mix(in_srgb,var(--color-bbp-banker)_40%,transparent)]':
         state === 'banker',
-      'bg-bbp-tie shadow-[0_0_6px_color-mix(in_srgb,var(--color-bbp-tie)_45%,transparent)]':
+      'bg-bbp-tie shadow-[0_0_4px_color-mix(in_srgb,var(--color-bbp-tie)_40%,transparent)]':
         state === 'tie',
-      'border-2 border-bbp-border-strong bg-transparent': state === 'empty',
+      'bg-transparent': state === 'empty',
+      'bbp-blink': pending,
     }"
-    role="img"
-    :aria-label="stateLabels[state]"
+    :role="state === 'empty' ? undefined : 'img'"
+    :aria-label="
+      state === 'empty' ? undefined : pending ? `Próxima jugada esperada: ${stateLabels[state]}` : stateLabels[state]
+    "
+    :aria-hidden="state === 'empty' ? true : undefined"
   />
 </template>

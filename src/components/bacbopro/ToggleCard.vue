@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { StrategyOption } from '@/types/bacbopro'
 import ToggleSwitch from './ToggleSwitch.vue'
 import StrategySelector from './StrategySelector.vue'
+import ConfirmModal from '@/components/ui/ConfirmModal.vue'
 
 interface Props {
   logo: string
@@ -14,29 +15,23 @@ interface Props {
   embedded?: boolean
   strategyOptions?: StrategyOption[]
   patching?: boolean
-  patchError?: string | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
   embedded: false,
   strategyOptions: () => [],
   patching: false,
-  patchError: null,
 })
 
 const emit = defineEmits<{
   confirmState: [value: boolean]
   confirmStrategy: [id: string]
-  dismissError: []
 }>()
 
 const pendingEnabled = ref<boolean | null>(null)
-const showToggleConfirm = ref(false)
+const showModal = ref(false)
 
 const displayEnabled = computed(() => pendingEnabled.value ?? props.active)
-const hasPendingToggleChange = computed(
-  () => pendingEnabled.value !== null && pendingEnabled.value !== props.active,
-)
 
 const hexColor = computed(() =>
   props.tone === 'banker' ? 'var(--color-bbp-banker)' : 'var(--color-bbp-player)',
@@ -47,50 +42,45 @@ function enabledLabel(value: boolean): string {
 }
 
 function handleToggleChange(value: boolean): void {
-  if (value === props.active) {
-    pendingEnabled.value = null
-    showToggleConfirm.value = false
-    return
-  }
+  if (value === props.active) return
   pendingEnabled.value = value
-  showToggleConfirm.value = false
+  showModal.value = true
 }
 
-function requestToggleSave(): void {
-  if (!hasPendingToggleChange.value) return
-  showToggleConfirm.value = true
-}
-
-function cancelTogglePending(): void {
+function cancelToggle(): void {
   pendingEnabled.value = null
-  showToggleConfirm.value = false
+  showModal.value = false
 }
 
-function confirmToggleChange(): void {
+function confirmToggle(): void {
   if (pendingEnabled.value === null) return
   emit('confirmState', pendingEnabled.value)
-  pendingEnabled.value = null
-  showToggleConfirm.value = false
 }
+
+watch(
+  () => props.patching,
+  (patching, wasPatching) => {
+    if (wasPatching && !patching) {
+      showModal.value = false
+      pendingEnabled.value = null
+    }
+  },
+)
 </script>
 
 <template>
   <div
     role="group"
     :aria-label="title"
-    class="flex w-full min-w-0 flex-col items-center justify-center gap-3 p-4"
-    :class="
-      embedded
-        ? undefined
-        : 'rounded-lg border border-bbp-border bg-bbp-panel'
-    "
+    class="flex w-full min-w-0 flex-col items-center justify-center gap-2 p-3 sm:p-3.5"
+    :class="embedded ? undefined : 'rounded-lg border border-bbp-border bg-bbp-panel bbp-elevation-1'"
   >
     <div
-      class="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-bbp-border-strong bg-bbp-bg/60"
+      class="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-bbp-border-strong bg-bbp-bg/60"
     >
-      <img :src="logo" :alt="logoAlt" class="h-full w-full object-contain p-1" />
+      <img :src="logo" :alt="logoAlt" class="h-full w-full object-contain p-0.5" />
     </div>
-    <span class="text-center text-base font-bold leading-snug tracking-wider text-gray-100">
+    <span class="font-brand text-center text-sm leading-[1.3] tracking-[-0.01em] text-gray-100">
       {{ title }}
     </span>
     <ToggleSwitch
@@ -101,97 +91,13 @@ function confirmToggleChange(): void {
       @update:model-value="handleToggleChange"
     />
 
-    <div
-      v-if="patching"
+    <p
+      v-if="patching && !showModal"
       aria-live="polite"
-      class="w-full min-w-0 rounded-md border border-bbp-border bg-bbp-bg/60 px-2.5 py-2 text-center text-[0.625rem] font-semibold tracking-wider text-gray-400"
+      class="w-full min-w-0 rounded-md border border-bbp-border bg-bbp-bg/60 px-2 py-1.5 text-center text-[0.625rem] font-semibold tracking-wider text-gray-400"
     >
       APLICANDO CAMBIO…
-    </div>
-
-    <div
-      v-else-if="patchError"
-      aria-live="polite"
-      class="flex w-full min-w-0 flex-wrap items-center justify-between gap-2 rounded-md border border-bbp-banker/40 bg-bbp-banker/10 px-2.5 py-2"
-    >
-      <span class="text-[0.625rem] font-semibold tracking-wider text-bbp-banker">
-        {{ patchError }}
-      </span>
-      <button
-        type="button"
-        aria-label="Cerrar error de canal"
-        class="rounded border border-bbp-border bg-bbp-bg/40 px-2.5 py-1 text-[0.6875rem] font-bold tracking-wider text-gray-400 transition-colors duration-200 hover:bg-bbp-bg"
-        @click="emit('dismissError')"
-      >
-        CERRAR
-      </button>
-    </div>
-
-    <div
-      v-if="hasPendingToggleChange && !showToggleConfirm && !patching"
-      aria-live="polite"
-      class="flex w-full min-w-0 flex-wrap items-center justify-between gap-2 rounded-md border border-bbp-border bg-bbp-bg/60 px-2.5 py-2"
-    >
-      <span
-        class="flex items-center gap-1.5 whitespace-nowrap text-[0.625rem] font-semibold tracking-wider text-bbp-tie"
-      >
-        <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-bbp-tie" aria-hidden="true" />
-        CAMBIO DE ESTADO PENDIENTE
-      </span>
-      <div class="flex items-center gap-1.5">
-        <button
-          type="button"
-          aria-label="Guardar cambio de estado"
-          class="rounded border border-bbp-active/40 bg-bbp-active/10 px-2.5 py-1 text-[0.6875rem] font-bold tracking-wider text-bbp-active transition-colors duration-200 hover:bg-bbp-active/20"
-          @click="requestToggleSave"
-        >
-          GUARDAR
-        </button>
-        <button
-          type="button"
-          aria-label="Cancelar cambio de estado"
-          class="rounded border border-bbp-border bg-bbp-bg/40 px-2.5 py-1 text-[0.6875rem] font-bold tracking-wider text-gray-400 transition-colors duration-200 hover:bg-bbp-bg"
-          @click="cancelTogglePending"
-        >
-          CANCELAR
-        </button>
-      </div>
-    </div>
-
-    <div
-      v-if="hasPendingToggleChange && showToggleConfirm"
-      role="group"
-      aria-label="Panel de confirmación de cambio de estado"
-      class="w-full min-w-0 rounded-md border border-bbp-border-strong bg-bbp-bg/60 p-3"
-    >
-      <p class="text-center text-[0.6875rem] font-bold tracking-[0.15em] text-bbp-tie">
-        ¿CONFIRMAR CAMBIO DE ESTADO?
-      </p>
-      <p class="mt-1 text-center text-xs font-semibold text-gray-300">
-        {{ title }}
-      </p>
-      <p class="mt-0.5 text-center text-xs font-semibold text-gray-300">
-        {{ enabledLabel(active) }} → {{ enabledLabel(pendingEnabled ?? active) }}
-      </p>
-      <div class="mt-2 grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          aria-label="Cancelar confirmación de estado"
-          class="rounded border border-bbp-border bg-bbp-bg/40 px-2.5 py-1 text-[0.6875rem] font-bold tracking-wider text-gray-400 transition-colors duration-200 hover:bg-bbp-bg"
-          @click="cancelTogglePending"
-        >
-          CANCELAR
-        </button>
-        <button
-          type="button"
-          aria-label="Confirmar cambio de estado"
-          class="rounded border border-bbp-active/40 bg-bbp-active/10 px-2.5 py-1 text-[0.6875rem] font-bold tracking-wider text-bbp-active transition-colors duration-200 hover:bg-bbp-active/20"
-          @click="confirmToggleChange"
-        >
-          CONFIRMAR
-        </button>
-      </div>
-    </div>
+    </p>
 
     <StrategySelector
       v-if="strategyOptions?.length"
@@ -199,11 +105,24 @@ function confirmToggleChange(): void {
       :options="strategyOptions"
       :select-label="`Seleccionar estrategia de ${title}`"
       :patching="patching"
-      :error="patchError"
       embedded
       compact
       @confirm="emit('confirmStrategy', $event)"
-      @dismiss-error="emit('dismissError')"
     />
+
+    <ConfirmModal
+      v-if="showModal"
+      :title="`¿${enabledLabel(pendingEnabled ?? active)} ${title}?`"
+      :tone="pendingEnabled ? 'active' : 'banker'"
+      :confirm-label="`Sí, ${enabledLabel(pendingEnabled ?? active)}`"
+      :loading="patching"
+      @confirm="confirmToggle"
+      @cancel="cancelToggle"
+    >
+      Vas a cambiar el estado de este canal de
+      <strong class="text-gray-100">{{ enabledLabel(active) }}</strong>
+      a
+      <strong class="text-gray-100">{{ enabledLabel(pendingEnabled ?? active) }}</strong>.
+    </ConfirmModal>
   </div>
 </template>

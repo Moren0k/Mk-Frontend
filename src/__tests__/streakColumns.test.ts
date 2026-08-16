@@ -61,10 +61,10 @@ describe('buildStreakColumns', () => {
 })
 
 describe('historyGrid', () => {
-  it('is a 16x10 grid', () => {
-    expect(historyGrid).toHaveLength(10)
+  it('is a 26x6 grid', () => {
+    expect(historyGrid).toHaveLength(6)
     for (const row of historyGrid) {
-      expect(row).toHaveLength(16)
+      expect(row).toHaveLength(26)
     }
   })
 
@@ -76,9 +76,12 @@ describe('historyGrid', () => {
   })
 
   it('is built from the same results source as the streak board', () => {
+    // 26 columns x 6 rows = 156 slots, tomados de la cola de las 200 jugadas
+    // mock: la última jugada cae exactamente en la última celda (fila 6,
+    // columna 26), ya que este mock usa el recorte simple (no el sistema de
+    // columnas estables con margen que usa la app real).
     const lastResult = mockResults[mockResults.length - 1]
-    const bottomRight = historyGrid[9]?.[15]
-    expect(bottomRight).toBe(lastResult)
+    expect(historyGrid[5]?.[25]).toBe(lastResult)
   })
 })
 

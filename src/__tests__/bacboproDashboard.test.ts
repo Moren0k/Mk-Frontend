@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
+import { mount, flushPromises, DOMWrapper, type VueWrapper } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 import BacboproDashboard from '@/views/BacboproDashboard.vue'
 import { ApiError } from '@/api/client'
@@ -144,6 +144,12 @@ vi.mock('@/api/endpoints', () => ({
 
 import * as endpoints from '@/api/endpoints'
 
+// ConfirmModal usa <Teleport to="body">, así que su contenido queda fuera
+// del árbol montado por Vue Test Utils; se verifica a través de document.body.
+function body(): DOMWrapper<HTMLElement> {
+  return new DOMWrapper(document.body)
+}
+
 describe('BacboproDashboard (integración API)', () => {
   let wrapper: VueWrapper
 
@@ -166,13 +172,12 @@ describe('BacboproDashboard (integración API)', () => {
     wrapper.unmount()
   })
 
-  it('renders the MKBACBO identity and the real-time sync badge', async () => {
+  it('renders the MKBACBOT identity and the real-time sync badge', async () => {
     await flushPromises()
-    expect(wrapper.text()).toContain('MKBACBO')
+    expect(wrapper.text()).toContain('MKBACBOT')
     expect(wrapper.text()).not.toContain('BACBOPRO')
     expect(wrapper.text()).not.toContain('V4.2')
-    expect(wrapper.text()).toContain('CASINO SYNC: ACTIVO')
-    expect(wrapper.text()).toContain('MKBOT. VIP')
+    expect(wrapper.text()).toContain('CASINO EN VIVO: ACTIVO')
   })
 
   it('renders both channel cards with the state from GET /channels', async () => {
@@ -200,9 +205,9 @@ describe('BacboproDashboard (integración API)', () => {
 
   it('renders the KPIs from the oficial channel of GET /reports/summary', async () => {
     await flushPromises()
-    expect(wrapper.text()).toContain('WINS')
-    expect(wrapper.text()).toContain('ALERTAS ENVIADAS')
-    expect(wrapper.text()).toContain('LOST')
+    expect(wrapper.text()).toContain('GANADAS')
+    expect(wrapper.text()).toContain('ALERTAS')
+    expect(wrapper.text()).toContain('PERDIDAS')
     expect(wrapper.text()).toContain('TIEMPO')
     expect(wrapper.text()).toContain('8')
     expect(wrapper.text()).toContain('10')
@@ -237,45 +242,42 @@ describe('BacboproDashboard (integración API)', () => {
     expect(wrapper.text()).toContain('100%')
   })
 
-  it('renders the streak board capped at 14 columns of at most 6 rows', async () => {
+  it('renders the streak board (Big Road) from the last 100 plays, one cell per real play', async () => {
     await flushPromises()
-    const columns = wrapper.findAll('.streak-column')
-    expect(columns).toHaveLength(14)
-    for (const column of columns) {
-      const cells = column.findAll('[role="img"]')
-      expect(cells.length).toBeGreaterThan(0)
-      expect(cells.length).toBeLessThanOrEqual(6)
-    }
+    const board = wrapper.find('[aria-label="Tablero de rachas"]')
+    // Las celdas vacías (huecos de la cola de dragón) quedan sin role="img"
+    // a propósito, así que este selector solo cuenta jugadas reales.
+    const filledCells = board.findAll('[role="img"]')
+    expect(filledCells.length).toBeGreaterThan(0)
+    expect(filledCells.length).toBeLessThanOrEqual(100)
   })
 
-  it('renders the 16x10 last plays board from the API history', async () => {
+  it('renders the 26x6 last plays board from the API history', async () => {
     await flushPromises()
     const historyCells = wrapper.findAll(
       '[aria-label="Historial de últimas 200 jugadas"] [role="img"]',
     )
-    expect(historyCells).toHaveLength(16 * 10)
+    expect(historyCells).toHaveLength(26 * 6)
 
     const cellClasses = historyCells.map((cell) => cell.classes())
     expect(cellClasses.some((classes) => classes.includes('bg-bbp-player'))).toBe(true)
     expect(cellClasses.some((classes) => classes.includes('bg-bbp-banker'))).toBe(true)
   })
 
-  it('renders the last winner from the newest history item', async () => {
+  it('renders the last winner (from the newest history item) centered in the header', async () => {
     await flushPromises()
-    const indicators = wrapper.findAll('[role="img"][aria-label^="Último ganador:"]')
-    expect(indicators).toHaveLength(1)
-    expect(indicators[0]?.attributes('aria-label')).toBe('Último ganador: BANKER')
+    expect(wrapper.text()).toContain('ÚLTIMA JUGADA: BANKER')
   })
 
   it('renders the oficial operation and an empty state for pruebas', async () => {
     await flushPromises()
-    expect(wrapper.text()).toContain('OPERACIÓN ACTUAL')
+    expect(wrapper.text()).toContain('OPERACIONES ACTUALES')
     expect(wrapper.text()).toContain('NUEVA ENTRADA')
     expect(wrapper.text()).toContain('streak-4')
     expect(wrapper.text()).toContain('Racha de 4 resultados consecutivos de BANKER.')
-    expect(wrapper.text()).toContain('🔵')
-    expect(wrapper.text()).toContain('🔴')
-    expect(wrapper.text()).toContain('MARTINGALAS MAXIMO:')
+    expect(wrapper.text()).toContain('INGRESAR DESPUÉS DE')
+    expect(wrapper.text()).toContain('APUESTA EN')
+    expect(wrapper.text()).toContain('MARTINGALAS MÁXIMO')
     const emptyStates = wrapper.findAll('p').filter((p) => p.text() === 'SIN OPERACIÓN ACTIVA')
     expect(emptyStates).toHaveLength(1)
   })
@@ -293,7 +295,7 @@ describe('BacboproDashboard (integración API)', () => {
   })
 
   describe('strategy confirmation flow (PATCH /channels)', () => {
-    it('does not apply the strategy immediately and keeps channels independent', async () => {
+    it('opens a confirmation modal without applying the strategy immediately', async () => {
       await flushPromises()
       const officialSelect = wrapper.find(
         '[aria-label="Seleccionar estrategia de BAC BO OFICIAL"]',
@@ -303,50 +305,43 @@ describe('BacboproDashboard (integración API)', () => {
       )
       await officialSelect.setValue('streak-3')
 
-      expect((officialSelect.element as HTMLSelectElement).value).toBe('streak-3')
       expect((telegramSelect.element as HTMLSelectElement).value).toBe('')
-      expect(wrapper.text()).toContain('CAMBIO PENDIENTE')
+      expect(body().text()).toContain('¿Cambiar estrategia?')
+      expect(body().text()).toContain('streak-4')
+      expect(body().text()).toContain('streak-3')
       expect(vi.mocked(endpoints.patchChannel)).not.toHaveBeenCalled()
     })
 
-    it('CANCELAR restores the active strategy', async () => {
+    it('Cancelar restores the active strategy', async () => {
       await flushPromises()
       const officialSelect = wrapper.find(
         '[aria-label="Seleccionar estrategia de BAC BO OFICIAL"]',
       )
       await officialSelect.setValue('streak-3')
 
-      const sections = wrapper.findAll('[aria-label="Selector de estrategia"]')
-      const officialSection = sections[1]!
-      const cancelButton = officialSection
+      const cancelButton = body()
         .findAll('button')
-        .find((button) => button.text() === 'CANCELAR')
+        .find((button) => button.text() === 'Cancelar')
       if (cancelButton) await cancelButton.trigger('click')
+      await flushPromises()
 
       expect((officialSelect.element as HTMLSelectElement).value).toBe('streak-4')
-      expect(officialSection.text()).not.toContain('CAMBIO PENDIENTE')
+      expect(body().text()).not.toContain('¿Cambiar estrategia?')
       expect(vi.mocked(endpoints.patchChannel)).not.toHaveBeenCalled()
     })
 
-    it('CONFIRMAR sends PATCH and updates the active strategy', async () => {
+    it('Sí, cambiar sends PATCH and updates the active strategy', async () => {
       await flushPromises()
       const officialSelect = wrapper.find(
         '[aria-label="Seleccionar estrategia de BAC BO OFICIAL"]',
       )
       await officialSelect.setValue('streak-3')
 
-      const sections = wrapper.findAll('[aria-label="Selector de estrategia"]')
-      const officialSection = sections[1]!
-      const saveButton = officialSection
-        .findAll('button')
-        .find((button) => button.text() === 'GUARDAR')
-      if (saveButton) await saveButton.trigger('click')
-      expect(officialSection.text()).toContain('¿CONFIRMAR CAMBIO DE ESTRATEGIA?')
-      expect(officialSection.text()).toContain('streak-4 → streak-3')
+      expect(body().text()).toContain('¿Cambiar estrategia?')
 
-      const confirmButton = officialSection
+      const confirmButton = body()
         .findAll('button')
-        .find((button) => button.text() === 'CONFIRMAR')
+        .find((button) => button.text() === 'Sí, cambiar')
       if (confirmButton) await confirmButton.trigger('click')
       await flushPromises()
 
@@ -354,52 +349,50 @@ describe('BacboproDashboard (integración API)', () => {
         strategyId: 'streak-3',
       })
       expect((officialSelect.element as HTMLSelectElement).value).toBe('streak-3')
-      expect(officialSection.text()).not.toContain('CAMBIO PENDIENTE')
+      expect(body().text()).not.toContain('¿Cambiar estrategia?')
     })
   })
 
   describe('channel state confirmation flow (PATCH /channels)', () => {
-    it('clicking the switch shows the pending state without applying it', async () => {
+    it('clicking the switch opens a confirmation modal without applying it', async () => {
       await flushPromises()
-      const telegramCard = wrapper.find('[aria-label="PRUEBAS TELEGRAM"]')
       const telegramSwitch = wrapper.find('[aria-label="Activar PRUEBAS TELEGRAM"]')
 
       await telegramSwitch.trigger('click')
       await flushPromises()
 
       expect(telegramSwitch.attributes('aria-checked')).toBe('true')
-      expect(telegramCard.text()).toContain('CAMBIO DE ESTADO PENDIENTE')
+      expect(body().text()).toContain('¿ON PRUEBAS TELEGRAM?')
       expect(vi.mocked(endpoints.patchChannel)).not.toHaveBeenCalled()
     })
 
-    it('CANCELAR restores the original state', async () => {
+    it('Cancelar restores the original state', async () => {
       await flushPromises()
-      const telegramCard = wrapper.find('[aria-label="PRUEBAS TELEGRAM"]')
       const telegramSwitch = wrapper.find('[aria-label="Activar PRUEBAS TELEGRAM"]')
 
       await telegramSwitch.trigger('click')
-      const cancel = telegramCard.find('[aria-label="Cancelar cambio de estado"]')
-      await cancel.trigger('click')
+      const cancel = body()
+        .findAll('button')
+        .find((button) => button.text() === 'Cancelar')
+      if (cancel) await cancel.trigger('click')
       await flushPromises()
 
       expect(telegramSwitch.attributes('aria-checked')).toBe('false')
-      expect(telegramCard.text()).not.toContain('CAMBIO DE ESTADO PENDIENTE')
+      expect(body().text()).not.toContain('¿ON PRUEBAS TELEGRAM?')
       expect(vi.mocked(endpoints.patchChannel)).not.toHaveBeenCalled()
     })
 
-    it('CONFIRMAR sends PATCH and applies the new state', async () => {
+    it('Sí, ON sends PATCH and applies the new state', async () => {
       await flushPromises()
-      const telegramCard = wrapper.find('[aria-label="PRUEBAS TELEGRAM"]')
       const telegramSwitch = wrapper.find('[aria-label="Activar PRUEBAS TELEGRAM"]')
 
       await telegramSwitch.trigger('click')
-      const save = telegramCard.find('[aria-label="Guardar cambio de estado"]')
-      await save.trigger('click')
-      expect(telegramCard.text()).toContain('¿CONFIRMAR CAMBIO DE ESTADO?')
-      expect(telegramCard.text()).toContain('OFF → ON')
+      expect(body().text()).toContain('¿ON PRUEBAS TELEGRAM?')
 
-      const confirm = telegramCard.find('[aria-label="Confirmar cambio de estado"]')
-      await confirm.trigger('click')
+      const confirm = body()
+        .findAll('button')
+        .find((button) => button.text() === 'Sí, ON')
+      if (confirm) await confirm.trigger('click')
       await flushPromises()
 
       expect(vi.mocked(endpoints.patchChannel)).toHaveBeenCalledWith('pruebas', {
@@ -470,7 +463,7 @@ describe('BacboproDashboard (integración API)', () => {
       wrapper = mount(BacboproDashboard)
       await flushPromises()
 
-      expect(wrapper.text()).toContain('CASINO SYNC: DESCONECTADO')
+      expect(wrapper.text()).toContain('CASINO EN VIVO: DESCONECTADO')
       expect(wrapper.text()).toContain('SIN CONEXIÓN EN VIVO')
       expect(wrapper.text()).toContain('RECONECTAR')
     })

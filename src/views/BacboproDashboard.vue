@@ -2,33 +2,35 @@
 import { computed, onMounted, onUnmounted } from 'vue'
 
 import BacboproHeader from '@/components/bacbopro/BacboproHeader.vue'
+import BacboproFooter from '@/components/bacbopro/BacboproFooter.vue'
 import ToggleCard from '@/components/bacbopro/ToggleCard.vue'
 import KpiGrid from '@/components/bacbopro/KpiGrid.vue'
 import StatsSection from '@/components/bacbopro/StatsSection.vue'
 import StreakBoard from '@/components/bacbopro/StreakBoard.vue'
 import HistoryPanel from '@/components/bacbopro/HistoryPanel.vue'
-import LastWinnerCard from '@/components/bacbopro/LastWinnerCard.vue'
-import OperationCard from '@/components/bacbopro/OperationCard.vue'
+import OperationsSection from '@/components/bacbopro/OperationsSection.vue'
 
 import { useBacboproStore } from '@/stores/bacbopro'
+import { useBacboproNotifications } from '@/composables/useBacboproNotifications'
 import type { KpiItem } from '@/types/bacbopro'
 
-import telegramLogo from '@/assets/images/MKBACBO_PRUEBA.png'
-import oficialLogo from '@/assets/images/MKBACBO_OFICIAL.png'
+import telegramLogo from '@/assets/images/Mk_Pruebas_Logo.webp'
+import oficialLogo from '@/assets/images/Mk_Oficial_Logo.webp'
 
 const store = useBacboproStore()
+useBacboproNotifications()
 
 const EMPTY_KPI_ITEMS: KpiItem[] = [
-  { label: 'WINS', value: '—', tone: 'green' },
-  { label: 'ALERTAS ENVIADAS', value: '—', tone: 'yellow' },
-  { label: 'LOST', value: '—', tone: 'red' },
+  { label: 'GANADAS', value: '—', tone: 'green' },
+  { label: 'ALERTAS', value: '—', tone: 'yellow' },
+  { label: 'PERDIDAS', value: '—', tone: 'red' },
   { label: 'TIEMPO', value: '—', tone: 'mono' },
 ]
 
 const LOADING_KPI_ITEMS: KpiItem[] = [
-  { label: 'WINS', value: '…', tone: 'green' },
-  { label: 'ALERTAS ENVIADAS', value: '…', tone: 'yellow' },
-  { label: 'LOST', value: '…', tone: 'red' },
+  { label: 'GANADAS', value: '…', tone: 'green' },
+  { label: 'ALERTAS', value: '…', tone: 'yellow' },
+  { label: 'PERDIDAS', value: '…', tone: 'red' },
   { label: 'TIEMPO', value: '…', tone: 'mono' },
 ]
 
@@ -70,10 +72,10 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="flex min-h-screen flex-col bg-bbp-bg font-sans text-gray-100">
+  <div class="flex min-h-screen flex-col items-center bg-bbp-bg font-sans text-gray-100">
     <BacboproHeader />
     <main
-      class="mx-auto grid w-full flex-1 grid-cols-1 items-start gap-4 py-4 pb-6 sm:py-5 sm:pb-8 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:gap-5"
+      class="mx-auto grid w-[90%] max-w-[1600px] flex-1 grid-cols-1 items-start gap-7 py-5 pb-7 sm:py-6 sm:pb-9 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:gap-9 2xl:max-w-[1920px] min-[2560px]:max-w-[2400px]"
     >
       <KpiGrid
         class="min-w-0 lg:col-start-1 lg:row-start-1"
@@ -86,15 +88,15 @@ onUnmounted(() => {
       />
       <StreakBoard
         class="min-w-0 lg:col-start-1 lg:row-start-3"
-        :columns="store.streakColumns"
+        :columns="store.streakDisplayColumns"
         :loading="historyLoading"
       />
       <aside
         class="min-w-0 max-w-full content-start lg:col-start-2 lg:row-start-1 lg:row-span-4"
       >
-        <div class="min-w-0 max-w-full overflow-hidden rounded-lg border border-bbp-border bg-bbp-panel">
+        <div class="bbp-glass bbp-elevation-2 min-w-0 max-w-full overflow-hidden rounded-lg border border-bbp-border">
           <div
-            class="grid grid-cols-1 divide-y divide-bbp-border border-b border-bbp-border sm:grid-cols-2 sm:divide-x sm:divide-y-0"
+            class="grid grid-cols-2 divide-x divide-bbp-border border-b-2 border-bbp-border-strong"
           >
             <ToggleCard
               :logo="telegramLogo"
@@ -105,11 +107,9 @@ onUnmounted(() => {
               :strategy-id="telegramStrategyId"
               :strategy-options="store.strategyOptions"
               :patching="store.pruebas.patching"
-              :patch-error="store.pruebas.patchError"
               embedded
               @confirm-state="confirmTelegramState"
               @confirm-strategy="confirmTelegramStrategy"
-              @dismiss-error="store.clearPatchError('pruebas')"
             />
             <ToggleCard
               :logo="oficialLogo"
@@ -120,41 +120,20 @@ onUnmounted(() => {
               :strategy-id="bacBoStrategyId"
               :strategy-options="store.strategyOptions"
               :patching="store.oficial.patching"
-              :patch-error="store.oficial.patchError"
               embedded
               @confirm-state="confirmBacBoState"
               @confirm-strategy="confirmBacBoStrategy"
-              @dismiss-error="store.clearPatchError('oficial')"
             />
           </div>
-          <div class="border-b border-bbp-border">
-            <LastWinnerCard
-              :winner="store.lastWinner"
-              :loading="historyLoading"
-              embedded
-            />
-          </div>
-          <div class="border-b border-bbp-border">
-            <OperationCard
-              :operation="store.oficialOperation"
-              channel-label="BAC BO OFICIAL"
-              :loading="store.oficial.loading"
-              :cancelling="store.oficial.cancelling"
-              :cancel-error="store.oficial.cancelError"
-              embedded
-              @cancel="store.cancelOperation('oficial')"
-              @dismiss-error="store.clearCancelError('oficial')"
-            />
-          </div>
-          <OperationCard
-            :operation="store.pruebasOperation"
-            channel-label="PRUEBAS TELEGRAM"
-            :loading="store.pruebas.loading"
-            :cancelling="store.pruebas.cancelling"
-            :cancel-error="store.pruebas.cancelError"
-            embedded
-            @cancel="store.cancelOperation('pruebas')"
-            @dismiss-error="store.clearCancelError('pruebas')"
+          <OperationsSection
+            :oficial-operation="store.oficialOperation"
+            :pruebas-operation="store.pruebasOperation"
+            :oficial-loading="store.oficial.loading"
+            :pruebas-loading="store.pruebas.loading"
+            :oficial-cancelling="store.oficial.cancelling"
+            :pruebas-cancelling="store.pruebas.cancelling"
+            @cancel-oficial="store.cancelOperation('oficial')"
+            @cancel-pruebas="store.cancelOperation('pruebas')"
           />
         </div>
       </aside>
@@ -164,5 +143,6 @@ onUnmounted(() => {
         :loading="historyLoading"
       />
     </main>
+    <BacboproFooter />
   </div>
 </template>

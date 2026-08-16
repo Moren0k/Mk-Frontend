@@ -27,20 +27,40 @@ import {
   postAdminReports,
 } from '@/api/endpoints'
 import {
+  HISTORY_ACTIVE_COLUMNS,
   HISTORY_COLUMNS,
   HISTORY_ROWS,
+  STREAK_DISPLAY_COLUMNS,
   STREAK_MAX_ROWS,
-  STREAK_VISIBLE_COLUMNS,
-  buildHistoryGrid,
+  appendOutcomeToBigRoad,
+  appendOutcomeToColumns,
+  buildStableBigRoadColumns,
+  buildStableHistoryColumns,
   buildStatsBlock,
-  buildVisibleStreakColumns,
+  createEmptyBigRoadCursor,
   historyToOutcomes,
   operationToEntry,
+  renderHistoryColumnsGrid,
   rollingToStatsBlock,
   strategyToOption,
   summaryToKpiItems,
+  winnerToOutcome,
 } from '@/mappers/bacboproMapper'
-import type { KpiItem, NonEmptyOutcome, OperationEntry, Outcome, StatsBlock, StreakColumn, StrategyOption } from '@/types/bacbopro'
+import type { BigRoadCursor } from '@/mappers/bacboproMapper'
+import type {
+  KpiItem,
+  NonEmptyOutcome,
+  OperationEntry,
+  OperationSide,
+  Outcome,
+  PendingAlertCell,
+  StatsBlock,
+  StrategyOption,
+} from '@/types/bacbopro'
+
+// Estados en los que una operación sigue "esperando" su jugada: mismo
+// criterio que usa OperationCard para permitir cancelar.
+const ALERT_ACTIVE_STATES = new Set(['OPEN', 'MG1', 'MG2'])
 
 export const SUMMARY_REFRESH_INTERVAL_MS = 60_000
 
@@ -86,6 +106,8 @@ export const useBacboproStore = defineStore('bacbopro', () => {
   const history = ref<HistoryItem[]>([])
   const historyLoading = ref(false)
   const historyError = ref<string | null>(null)
+  const historyColumns = ref<NonEmptyOutcome[][]>([])
+  const bigRoadCursor = ref<BigRoadCursor>(createEmptyBigRoadCursor())
 
   const rolling200 = ref<StatsRollingPayload | null>(null)
   const rolling50 = ref<StatsRollingPayload | null>(null)
@@ -93,6 +115,13 @@ export const useBacboproStore = defineStore('bacbopro', () => {
   const summary = ref<ReportSummary | null>(null)
   const summaryLoading = ref(false)
   const summaryError = ref<string | null>(null)
+
+  // El "tiempo" corre localmente entre una petición y otra: se sincroniza con
+  // el valor real del servidor cada vez que llega una respuesta nueva, y de
+  // ahí en adelante avanza solo (un tick por segundo) hasta la próxima.
+  const uptimeBaseMs = ref(0)
+  const uptimeBaseAt = ref(Date.now())
+  const uptimeTick = ref(0)
 
   const strategies = ref<StrategyCatalogItem[]>([])
   const strategiesLoading = ref(false)
@@ -109,21 +138,29 @@ export const useBacboproStore = defineStore('bacbopro', () => {
   const sendingReport = ref(false)
   const sendReportError = ref<string | null>(null)
 
+  const hydrated = ref(false)
+
   let initialized = false
   let streamController: { abort: () => void } | null = null
   let summaryTimer: ReturnType<typeof setInterval> | null = null
+  let uptimeTimer: ReturnType<typeof setInterval> | null = null
+
+  function syncUptime(uptimeMs: number): void {
+    uptimeBaseMs.value = uptimeMs
+    uptimeBaseAt.value = Date.now()
+  }
 
   const channelSnapshot = (channel: ChannelId): ChannelSnapshot =>
     channel === 'oficial' ? oficial.value : pruebas.value
 
   const historyOutcomes = computed<NonEmptyOutcome[]>(() => historyToOutcomes(history.value))
 
-  const streakColumns = computed<StreakColumn[]>(() =>
-    buildVisibleStreakColumns(historyOutcomes.value, STREAK_MAX_ROWS, STREAK_VISIBLE_COLUMNS),
-  )
+  // Columnas del tablero de rachas (Big Road), column-major (columns[col][row]),
+  // ya acotadas a STREAK_DISPLAY_COLUMNS — nunca necesita scroll lateral.
+  const streakColumns = computed<Outcome[][]>(() => bigRoadCursor.value.columns)
 
   const historyGrid = computed<Outcome[][]>(() =>
-    buildHistoryGrid(historyOutcomes.value, HISTORY_COLUMNS, HISTORY_ROWS),
+    renderHistoryColumnsGrid(historyColumns.value, HISTORY_ROWS, HISTORY_COLUMNS),
   )
 
   const lastWinner = computed<NonEmptyOutcome | null>(() => {
@@ -146,8 +183,13 @@ export const useBacboproStore = defineStore('bacbopro', () => {
     return blocks
   })
 
+  const displayUptimeMs = computed<number>(() => {
+    void uptimeTick.value // dependencia reactiva: fuerza recálculo cada segundo
+    return uptimeBaseMs.value + (Date.now() - uptimeBaseAt.value)
+  })
+
   const kpiItems = computed<KpiItem[]>(() =>
-    summary.value ? summaryToKpiItems(summary.value) : [],
+    summary.value ? summaryToKpiItems(summary.value, displayUptimeMs.value) : [],
   )
 
   const strategyOptions = computed<StrategyOption[]>(() =>
@@ -167,6 +209,71 @@ export const useBacboproStore = defineStore('bacbopro', () => {
 
   const oficialOperation = computed<OperationEntry | null>(() => operationEntryFor('oficial'))
   const pruebasOperation = computed<OperationEntry | null>(() => operationEntryFor('pruebas'))
+
+  // Lado al que hay que apostar según la alerta activa del canal OFICIAL
+  // (nunca "pruebas"): se muestra como bolita intermitente en ambos
+  // tableros mientras la operación sigue esperando su jugada. Se mantiene
+  // igual durante MG1/MG2 (aunque lleguen ties u otros resultados
+  // intermedios) y desaparece recién cuando la operación cierra con un
+  // estado (WON/LOST/CANCELLED).
+  const oficialAlertSide = computed<Exclude<OperationSide, 'tie'> | null>(() => {
+    const operation = oficialOperation.value
+    if (!operation || !ALERT_ACTIVE_STATES.has(operation.state)) return null
+    return operation.betOnSide === 'tie' ? null : operation.betOnSide
+  })
+
+  // Dónde caería esa próxima jugada en cada tablero: se SIMULA (sin tocar
+  // el estado real) agregando `oficialAlertSide` al cursor/columnas
+  // vigentes, con las mismas funciones puras que ya usa el resto del
+  // tablero — así la celda "pendiente" queda exactamente donde caería la
+  // jugada real si llegara ahora mismo.
+  //
+  // El tablero de últimas jugadas usa HISTORY_COLUMNS (no HISTORY_ACTIVE_COLUMNS)
+  // como tope para la simulación a propósito: como HISTORY_COLUMNS ya deja
+  // HISTORY_EMPTY_BUFFER_COLUMNS columnas siempre vacías al final, la celda
+  // simulada cae ahí sin desplazar ninguna columna con datos reales.
+  const oficialPendingHistoryCell = computed<PendingAlertCell | null>(() => {
+    const side = oficialAlertSide.value
+    if (!side) return null
+    const simulated = appendOutcomeToColumns(historyColumns.value, side, HISTORY_ROWS, HISTORY_COLUMNS)
+    const column = simulated.length - 1
+    const activeColumn = simulated[column]
+    if (!activeColumn) return null
+    return { row: activeColumn.length - 1, column, side }
+  })
+
+  // El tablero de rachas, en cambio, NO tiene columnas de margen: sus
+  // STREAK_DISPLAY_COLUMNS están siempre activas. Si simuláramos con ese
+  // mismo tope estando el tablero lleno, la simulación descartaría (shift)
+  // la columna más vieja para abrir la nueva — pero el grid REAL que ya
+  // está en pantalla no hizo ese descarte, así que la celda pendiente
+  // quedaría superpuesta sobre la última columna real en vez de ir después.
+  // Por eso el tablero se dibuja siempre a partir de las columnas YA
+  // simuladas (con el mismo shift aplicado, si hizo falta) en vez de mezclar
+  // el cursor real con una celda aislada calculada aparte.
+  const oficialPendingStreakSimulation = computed(() => {
+    const side = oficialAlertSide.value
+    if (!side) return null
+    const simulated = appendOutcomeToBigRoad(
+      bigRoadCursor.value,
+      side,
+      STREAK_MAX_ROWS,
+      STREAK_DISPLAY_COLUMNS,
+    )
+    const column = simulated.columns.length - 1
+    if (column < 0) return null
+    return { columns: simulated.columns, row: simulated.row, column, side }
+  })
+
+  const streakDisplayColumns = computed<Outcome[][]>(
+    () => oficialPendingStreakSimulation.value?.columns ?? bigRoadCursor.value.columns,
+  )
+
+  const oficialPendingStreakCell = computed<PendingAlertCell | null>(() => {
+    const sim = oficialPendingStreakSimulation.value
+    if (!sim) return null
+    return { row: sim.row, column: sim.column, side: sim.side }
+  })
 
   async function hydrate(): Promise<void> {
     oficial.value.loading = true
@@ -211,6 +318,17 @@ export const useBacboproStore = defineStore('bacbopro', () => {
         try {
           const response = await getHistory(200)
           history.value = response.data
+          const outcomes = historyToOutcomes(response.data)
+          historyColumns.value = buildStableHistoryColumns(
+            outcomes,
+            HISTORY_ROWS,
+            HISTORY_ACTIVE_COLUMNS,
+          )
+          bigRoadCursor.value = buildStableBigRoadColumns(
+            outcomes,
+            STREAK_MAX_ROWS,
+            STREAK_DISPLAY_COLUMNS,
+          )
           historyError.value = null
         } catch (error) {
           historyError.value = describeApiError(error)
@@ -222,6 +340,7 @@ export const useBacboproStore = defineStore('bacbopro', () => {
         try {
           const response = await getReportsSummary()
           summary.value = response.data
+          syncUptime(response.data.uptimeMs)
           summaryError.value = null
         } catch (error) {
           summaryError.value = describeApiError(error)
@@ -259,6 +378,19 @@ export const useBacboproStore = defineStore('bacbopro', () => {
   function appendGame(game: GameReceivedPayload): void {
     const next = [...history.value, game]
     history.value = next.length > 200 ? next.slice(next.length - 200) : next
+    const outcome = winnerToOutcome(game.winner)
+    historyColumns.value = appendOutcomeToColumns(
+      historyColumns.value,
+      outcome,
+      HISTORY_ROWS,
+      HISTORY_ACTIVE_COLUMNS,
+    )
+    bigRoadCursor.value = appendOutcomeToBigRoad(
+      bigRoadCursor.value,
+      outcome,
+      STREAK_MAX_ROWS,
+      STREAK_DISPLAY_COLUMNS,
+    )
   }
 
   function channelForStrategy(strategyId: string): ChannelId | null {
@@ -354,6 +486,7 @@ export const useBacboproStore = defineStore('bacbopro', () => {
     try {
       const response = await getReportsSummary()
       summary.value = response.data
+      syncUptime(response.data.uptimeMs)
       summaryError.value = null
     } catch (error) {
       summaryError.value = describeApiError(error)
@@ -408,7 +541,13 @@ export const useBacboproStore = defineStore('bacbopro', () => {
   async function initialize(): Promise<void> {
     if (initialized) return
     initialized = true
+    if (!uptimeTimer) {
+      uptimeTimer = setInterval(() => {
+        uptimeTick.value += 1
+      }, 1000)
+    }
     await hydrate()
+    hydrated.value = true
     await connectStream()
   }
 
@@ -417,11 +556,17 @@ export const useBacboproStore = defineStore('bacbopro', () => {
       clearInterval(summaryTimer)
       summaryTimer = null
     }
+    if (uptimeTimer) {
+      clearInterval(uptimeTimer)
+      uptimeTimer = null
+    }
     if (streamController) {
       streamController.abort()
       streamController = null
     }
     streamConnected.value = false
+    initialized = false
+    hydrated.value = false
   }
 
   return {
@@ -430,6 +575,7 @@ export const useBacboproStore = defineStore('bacbopro', () => {
     history,
     historyLoading,
     historyError,
+    historyColumns,
     rolling200,
     rolling50,
     summary,
@@ -446,8 +592,10 @@ export const useBacboproStore = defineStore('bacbopro', () => {
     streamError,
     sendingReport,
     sendReportError,
+    hydrated,
     historyOutcomes,
     streakColumns,
+    streakDisplayColumns,
     historyGrid,
     lastWinner,
     statsBlocks,
@@ -455,6 +603,9 @@ export const useBacboproStore = defineStore('bacbopro', () => {
     strategyOptions,
     oficialOperation,
     pruebasOperation,
+    oficialAlertSide,
+    oficialPendingHistoryCell,
+    oficialPendingStreakCell,
     initialize,
     hydrate,
     connectStream,

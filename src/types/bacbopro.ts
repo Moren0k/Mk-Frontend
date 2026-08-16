@@ -37,6 +37,15 @@ export interface StrategyOption {
 
 export type OperationSide = 'player' | 'banker' | 'tie'
 
+/** Posición (fila/columna, misma convención que los grids de los tableros)
+ * donde caería la PRÓXIMA jugada, mientras una alerta del canal oficial
+ * sigue abierta esperando su resultado. */
+export interface PendingAlertCell {
+  row: number
+  column: number
+  side: Exclude<OperationSide, 'tie'>
+}
+
 export type OperationDisplayState = 'OPEN' | 'MG1' | 'MG2' | 'WON' | 'LOST' | 'CANCELLED'
 
 export interface OperationEntry {

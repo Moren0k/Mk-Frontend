@@ -1,38 +1,80 @@
 <script setup lang="ts">
+import { onUnmounted, ref, watch } from 'vue'
 import { RouterView } from 'vue-router'
 import AccessGate from '@/components/AccessGate.vue'
+import DashboardSkeleton from '@/components/DashboardSkeleton.vue'
+import ToastStack from '@/components/ui/ToastStack.vue'
 import { useAccessGate } from '@/composables/useAccessGate'
+import { useBacboproStore } from '@/stores/bacbopro'
 
-const { isUnlocked, lock } = useAccessGate()
+const { isUnlocked } = useAccessGate()
+const store = useBacboproStore()
+
+const MIN_REVEAL_HOLD_MS = 350
+const MAX_REVEAL_MS = 1400
+
+const revealing = ref(false)
+let holdTimer: ReturnType<typeof setTimeout> | null = null
+let capTimer: ReturnType<typeof setTimeout> | null = null
+let unlockedAt = 0
+
+function clearTimers(): void {
+  if (holdTimer) clearTimeout(holdTimer)
+  if (capTimer) clearTimeout(capTimer)
+  holdTimer = null
+  capTimer = null
+}
+
+watch(isUnlocked, (unlocked) => {
+  clearTimers()
+  if (!unlocked) {
+    revealing.value = false
+    return
+  }
+  revealing.value = true
+  unlockedAt = Date.now()
+  capTimer = setTimeout(() => {
+    revealing.value = false
+  }, MAX_REVEAL_MS)
+})
+
+watch(
+  () => store.hydrated,
+  (done) => {
+    if (!done || !revealing.value) return
+    const remaining = Math.max(MIN_REVEAL_HOLD_MS - (Date.now() - unlockedAt), 0)
+    holdTimer = setTimeout(() => {
+      revealing.value = false
+    }, remaining)
+  },
+)
+
+onUnmounted(clearTimers)
 </script>
 
 <template>
-  <AccessGate v-if="!isUnlocked" />
-  <template v-else>
-    <button class="logout-button" type="button" title="Cerrar sesión" @click="lock">
-      Cerrar sesión
-    </button>
-    <RouterView />
-  </template>
+  <div class="relative min-h-screen">
+    <RouterView v-if="isUnlocked" />
+    <DashboardSkeleton v-else />
+
+    <Transition name="bbp-gate">
+      <AccessGate v-if="!isUnlocked || revealing" :revealing="revealing" />
+    </Transition>
+
+    <template v-if="isUnlocked">
+      <ToastStack />
+    </template>
+  </div>
 </template>
 
 <style scoped>
-.logout-button {
-  position: fixed;
-  top: 0.5rem;
-  right: 0.5rem;
-  z-index: 50;
-  padding: 0.25rem 0.625rem;
-  background: var(--color-surface-dark);
-  border: 1px solid var(--color-border);
-  border-radius: 0.25rem;
-  color: var(--color-text-muted);
-  font-size: 0.6875rem;
-  cursor: pointer;
+.bbp-gate-enter-active,
+.bbp-gate-leave-active {
+  transition: opacity 0.4s ease;
 }
 
-.logout-button:hover {
-  color: var(--color-text-primary);
-  border-color: var(--color-waiting);
+.bbp-gate-enter-from,
+.bbp-gate-leave-to {
+  opacity: 0;
 }
 </style>

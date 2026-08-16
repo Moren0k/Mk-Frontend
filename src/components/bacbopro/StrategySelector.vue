@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref, watch } from 'vue'
 import type { StrategyOption } from '@/types/bacbopro'
+import ConfirmModal from '@/components/ui/ConfirmModal.vue'
 
 interface Props {
   options: StrategyOption[]
@@ -10,7 +11,6 @@ interface Props {
   compact?: boolean
   selectLabel?: string
   patching?: boolean
-  error?: string | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -19,21 +19,14 @@ const props = withDefaults(defineProps<Props>(), {
   compact: false,
   selectLabel: 'Seleccionar estrategia',
   patching: false,
-  error: null,
 })
 
 const emit = defineEmits<{
   confirm: [id: string]
-  dismissError: []
 }>()
 
 const pending = ref<string | null>(null)
-const showConfirm = ref(false)
-
-const selectValue = computed(() => pending.value ?? props.modelValue)
-const hasPendingChange = computed(
-  () => pending.value !== null && pending.value !== props.modelValue,
-)
+const showModal = ref(false)
 
 function optionLabel(id: string): string {
   return props.options.find((option) => option.id === id)?.label ?? id
@@ -41,161 +34,88 @@ function optionLabel(id: string): string {
 
 function handleSelectChange(event: Event): void {
   const value = (event.target as HTMLSelectElement).value
-  if (value === props.modelValue) {
-    pending.value = null
-    showConfirm.value = false
-    return
-  }
+  if (value === props.modelValue) return
   pending.value = value
-  showConfirm.value = false
+  showModal.value = true
 }
 
-function requestSave(): void {
-  if (!hasPendingChange.value) return
-  showConfirm.value = true
-}
-
-function cancelPending(): void {
+function cancelChange(): void {
   pending.value = null
-  showConfirm.value = false
+  showModal.value = false
 }
 
 function confirmChange(): void {
   if (pending.value === null) return
   emit('confirm', pending.value)
-  pending.value = null
-  showConfirm.value = false
 }
+
+watch(
+  () => props.patching,
+  (patching, wasPatching) => {
+    if (wasPatching && !patching) {
+      showModal.value = false
+      pending.value = null
+    }
+  },
+)
 </script>
 
 <template>
   <section
     aria-label="Selector de estrategia"
-    class="w-full min-w-0 max-w-full"
-    :class="embedded ? undefined : 'rounded-lg border border-bbp-border bg-bbp-panel p-4'"
+    class="mx-auto w-full max-w-[7rem] min-w-0"
+    :class="embedded ? undefined : 'max-w-full rounded-lg border border-bbp-border bg-bbp-panel bbp-elevation-1 p-4'"
   >
     <h2
       class="text-center font-bold tracking-[0.15em] text-gray-300"
-      :class="compact ? 'text-sm' : 'text-lg'"
+      :class="compact ? 'text-xs' : 'text-lg'"
     >
       {{ label }}
     </h2>
 
-    <div class="relative mt-2 w-full min-w-0 max-w-full">
+    <div class="relative mt-1.5 w-full min-w-0">
       <select
-        :value="selectValue"
+        :value="pending ?? modelValue"
         :aria-label="selectLabel"
         :disabled="patching || options.length === 0"
-        class="w-full min-w-0 max-w-full appearance-none rounded-md border border-bbp-border-strong bg-bbp-bg/80 px-3 py-2 pr-9 text-sm font-semibold tracking-wider text-gray-100 outline-none transition-colors duration-200 focus:border-bbp-active/60 focus:ring-1 focus:ring-bbp-active/40 disabled:opacity-60"
+        class="w-full min-w-0 appearance-none rounded-md border border-bbp-border-strong bg-bbp-bg/80 px-2 py-1 pr-6 text-[0.6875rem] font-semibold tracking-wider text-gray-100 outline-none transition-colors duration-150 focus-visible:border-bbp-focus focus-visible:ring-2 focus-visible:ring-bbp-focus/40 disabled:opacity-60"
         @change="handleSelectChange"
       >
-        <option
-          v-if="options.length === 0"
-          value=""
-          class="bg-bbp-panel text-gray-100"
-        >
+        <option v-if="options.length === 0" value="" class="bg-bbp-panel text-gray-100">
           CARGANDO…
         </option>
-        <option
-          v-for="option in options"
-          :key="option.id"
-          :value="option.id"
-          class="bg-bbp-panel text-gray-100"
-        >
+        <option v-for="option in options" :key="option.id" :value="option.id" class="bg-bbp-panel text-gray-100">
           {{ option.label }}
         </option>
       </select>
       <span
-        class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-gray-400"
+        class="pointer-events-none absolute inset-y-0 right-2 flex items-center text-xs text-gray-400"
         aria-hidden="true"
       >
         ▾
       </span>
     </div>
 
-    <div
-      v-if="patching"
+    <p
+      v-if="patching && !showModal"
       aria-live="polite"
-      class="mt-2 w-full min-w-0 rounded-md border border-bbp-border bg-bbp-bg/60 px-2.5 py-2 text-center text-[0.625rem] font-semibold tracking-wider text-gray-400"
+      class="mt-1.5 w-full min-w-0 rounded-md border border-bbp-border bg-bbp-bg/60 px-2 py-1.5 text-center text-[0.625rem] font-semibold tracking-wider text-gray-400"
     >
       APLICANDO CAMBIO…
-    </div>
+    </p>
 
-    <div
-      v-else-if="error"
-      aria-live="polite"
-      class="mt-2 flex w-full min-w-0 flex-wrap items-center justify-between gap-2 rounded-md border border-bbp-banker/40 bg-bbp-banker/10 px-2.5 py-2"
+    <ConfirmModal
+      v-if="showModal"
+      title="¿Cambiar estrategia?"
+      tone="active"
+      confirm-label="Sí, cambiar"
+      :loading="patching"
+      @confirm="confirmChange"
+      @cancel="cancelChange"
     >
-      <span class="text-[0.625rem] font-semibold tracking-wider text-bbp-banker">
-        {{ error }}
-      </span>
-      <button
-        type="button"
-        aria-label="Cerrar error de estrategia"
-        class="rounded border border-bbp-border bg-bbp-bg/40 px-2.5 py-1 text-[0.6875rem] font-bold tracking-wider text-gray-400 transition-colors duration-200 hover:bg-bbp-bg"
-        @click="emit('dismissError')"
-      >
-        CERRAR
-      </button>
-    </div>
-
-    <div
-      v-if="hasPendingChange && !showConfirm && !patching"
-      aria-live="polite"
-      class="mt-2 flex w-full min-w-0 flex-wrap items-center justify-between gap-2 rounded-md border border-bbp-border bg-bbp-bg/60 px-2.5 py-2"
-    >
-      <span
-        class="flex items-center gap-1.5 whitespace-nowrap text-[0.625rem] font-semibold tracking-wider text-bbp-tie"
-      >
-        <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-bbp-tie" aria-hidden="true" />
-        CAMBIO PENDIENTE
-      </span>
-      <div class="flex items-center gap-1.5">
-        <button
-          type="button"
-          class="rounded border border-bbp-active/40 bg-bbp-active/10 px-2.5 py-1 text-[0.6875rem] font-bold tracking-wider text-bbp-active transition-colors duration-200 hover:bg-bbp-active/20"
-          @click="requestSave"
-        >
-          GUARDAR
-        </button>
-        <button
-          type="button"
-          class="rounded border border-bbp-border bg-bbp-bg/40 px-2.5 py-1 text-[0.6875rem] font-bold tracking-wider text-gray-400 transition-colors duration-200 hover:bg-bbp-bg"
-          @click="cancelPending"
-        >
-          CANCELAR
-        </button>
-      </div>
-    </div>
-
-    <div
-      v-if="hasPendingChange && showConfirm"
-      role="group"
-      aria-label="Confirmar cambio de estrategia"
-      class="mt-2 w-full min-w-0 rounded-md border border-bbp-border-strong bg-bbp-bg/60 p-3"
-    >
-      <p class="text-center text-[0.6875rem] font-bold tracking-[0.15em] text-bbp-tie">
-        ¿CONFIRMAR CAMBIO DE ESTRATEGIA?
-      </p>
-      <p class="mt-1 text-center text-xs font-semibold text-gray-300">
-        {{ optionLabel(modelValue) }} → {{ optionLabel(pending ?? modelValue) }}
-      </p>
-      <div class="mt-2 grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          class="rounded border border-bbp-border bg-bbp-bg/40 px-2.5 py-1 text-[0.6875rem] font-bold tracking-wider text-gray-400 transition-colors duration-200 hover:bg-bbp-bg"
-          @click="cancelPending"
-        >
-          CANCELAR
-        </button>
-        <button
-          type="button"
-          class="rounded border border-bbp-active/40 bg-bbp-active/10 px-2.5 py-1 text-[0.6875rem] font-bold tracking-wider text-bbp-active transition-colors duration-200 hover:bg-bbp-active/20"
-          @click="confirmChange"
-        >
-          CONFIRMAR
-        </button>
-      </div>
-    </div>
+      <strong class="text-gray-100">{{ optionLabel(modelValue) }}</strong>
+      →
+      <strong class="text-gray-100">{{ optionLabel(pending ?? modelValue) }}</strong>
+    </ConfirmModal>
   </section>
 </template>

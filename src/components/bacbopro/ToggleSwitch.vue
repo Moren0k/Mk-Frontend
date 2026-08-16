@@ -27,7 +27,7 @@ const switchLabel = props.label
     :aria-checked="model"
     :aria-label="switchLabel"
     :disabled="disabled"
-    class="relative inline-flex h-7 w-14 shrink-0 items-center rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 disabled:opacity-60"
+    class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bbp-focus/60 focus-visible:ring-offset-2 focus-visible:ring-offset-bbp-bg disabled:opacity-60"
     :style="{
       backgroundColor: model ? activeColor : 'var(--color-bbp-border-strong)',
       boxShadow: model
@@ -37,8 +37,8 @@ const switchLabel = props.label
     @click="toggle"
   >
     <span
-      class="inline-block h-6 w-6 rounded-full bg-white shadow transition-transform duration-200"
-      :class="model ? 'translate-x-[1.8125rem]' : 'translate-x-[0.1875rem]'"
+      class="inline-block h-5 w-5 rounded-full bg-white shadow transition-transform duration-200"
+      :class="model ? 'translate-x-[1.375rem]' : 'translate-x-[0.125rem]'"
       aria-hidden="true"
     />
   </button>

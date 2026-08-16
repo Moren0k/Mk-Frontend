@@ -164,6 +164,89 @@ describe('bacboproStore', () => {
     expect(store.historyLoading).toBe(false)
   })
 
+  it('oficialAlertSide reflects the bet side of an active OFICIAL operation', async () => {
+    const store = useBacboproStore()
+    await store.hydrate()
+
+    // El mock por defecto abre 'oficial' con recommendedWinner PLAYER y
+    // currentState OPEN — betOnSide debería ser 'player'.
+    expect(store.oficialAlertSide).toBe('player')
+  })
+
+  it('oficialAlertSide is null once the OFICIAL operation is resolved (won/lost/cancelled)', async () => {
+    vi.mocked(endpoints.getOperations).mockImplementation(async (channel) => ({
+      data: channel === 'oficial' ? [operationOf('streak-4', { currentState: 'WON' })] : [],
+      requestId: 'r2',
+    }))
+    const store = useBacboproStore()
+    await store.hydrate()
+
+    expect(store.oficialAlertSide).toBeNull()
+  })
+
+  it('oficialAlertSide is null when OFICIAL has no active operation, even if PRUEBAS does', async () => {
+    vi.mocked(endpoints.getOperations).mockImplementation(async (channel) => ({
+      data: channel === 'pruebas' ? [operationOf('streak-3')] : [],
+      requestId: 'r2',
+    }))
+    const store = useBacboproStore()
+    await store.hydrate()
+
+    expect(store.oficial.operation).toBeNull()
+    expect(store.pruebas.operation).not.toBeNull()
+    expect(store.oficialAlertSide).toBeNull()
+  })
+
+  it('streakDisplayColumns matches the real cursor when there is no active alert', async () => {
+    vi.mocked(endpoints.getOperations).mockResolvedValue({ data: [], requestId: 'r2' })
+    const store = useBacboproStore()
+    await store.hydrate()
+
+    expect(store.oficialAlertSide).toBeNull()
+    expect(store.streakDisplayColumns).toEqual(store.streakColumns)
+  })
+
+  it('regression: a pending cell on a FULL streak board never overlaps a real column', async () => {
+    // 200 resultados alternando player/banker sin ties: cada uno abre su
+    // propia columna (racha de 1), así que el Big Road queda con sus
+    // STREAK_DISPLAY_COLUMNS (26) columnas completamente llenas — el
+    // escenario donde el bug reportado ocurría (la simulación abría una
+    // columna nueva, pero como el tope de columnas ya estaba al máximo, se
+    // descartaba la más vieja SOLO en la simulación, no en el grid real, y
+    // la celda pendiente terminaba dibujada encima de la última columna real).
+    vi.mocked(endpoints.getHistory).mockResolvedValue({
+      data: Array.from({ length: 200 }, (_, index) => ({
+        roundId: `round-${index}`,
+        winner: index % 2 === 0 ? 'PLAYER' : 'BANKER',
+        score: 9,
+        playedAt: '2026-08-11T04:28:11.765Z',
+      })),
+      meta: { limit: 200, count: 200 },
+      requestId: 'r3',
+    })
+    const store = useBacboproStore()
+    await store.hydrate()
+
+    expect(store.streakColumns).toHaveLength(26)
+    const realLastColumn = store.streakColumns[25]
+
+    expect(store.oficialAlertSide).toBe('player')
+    const pending = store.oficialPendingStreakCell
+    expect(pending).not.toBeNull()
+
+    // El grid a mostrar sigue teniendo como mucho 26 columnas (nunca crece),
+    // y la celda pendiente cae en su última columna.
+    expect(store.streakDisplayColumns.length).toBeLessThanOrEqual(26)
+    expect(pending?.column).toBe(store.streakDisplayColumns.length - 1)
+
+    // La última columna real (con datos reales, todavía sin la jugada nueva)
+    // queda descartada en el grid a mostrar — nunca superpuesta: la columna
+    // que ocupa esa posición ahora es la simulada (solo con la celda
+    // pendiente y vacíos), no la última columna real original.
+    expect(store.streakDisplayColumns[pending!.column]).not.toEqual(realLastColumn)
+    expect(store.streakDisplayColumns[pending!.column]?.[pending!.row]).toBe('player')
+  })
+
   it('hydrate reports per-domain errors without failing other domains', async () => {
     vi.mocked(endpoints.getReportsSummary).mockRejectedValueOnce(
       new ApiError({ code: 'UNAUTHORIZED', message: 'Unauthorized', httpStatus: 401 }),
@@ -405,9 +488,9 @@ describe('bacboproStore', () => {
     await store.refreshSummary()
 
     expect(store.kpiItems).toEqual([
-      { label: 'WINS', value: '12', tone: 'green' },
-      { label: 'ALERTAS ENVIADAS', value: '13', tone: 'yellow' },
-      { label: 'LOST', value: '1', tone: 'red' },
+      { label: 'GANADAS', value: '12', tone: 'green' },
+      { label: 'ALERTAS', value: '13', tone: 'yellow' },
+      { label: 'PERDIDAS', value: '1', tone: 'red' },
       { label: 'TIEMPO', value: '02:30:00', tone: 'mono' },
     ])
   })
