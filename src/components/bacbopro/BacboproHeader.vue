@@ -24,10 +24,25 @@ const showConnectionBanner = computed(
   () => !store.streamConnected && (store.streamError !== null || !store.streamConnecting),
 )
 
-const winnerConfig: Record<WinnerOutcome, { label: string; color: string }> = {
-  banker: { label: 'BANKER', color: 'var(--color-bbp-banker)' },
-  player: { label: 'PLAYER', color: 'var(--color-bbp-player)' },
-  tie: { label: 'TIE', color: 'var(--color-bbp-tie)' },
+const winnerConfig: Record<WinnerOutcome, { label: string; color: string; ballClass: string }> = {
+  banker: {
+    label: 'BANKER',
+    color: 'var(--color-bbp-banker)',
+    ballClass:
+      'bg-bbp-banker shadow-[0_0_10px_color-mix(in_srgb,var(--color-bbp-banker)_50%,transparent)]',
+  },
+  player: {
+    label: 'PLAYER',
+    color: 'var(--color-bbp-player)',
+    ballClass:
+      'bg-bbp-player shadow-[0_0_10px_color-mix(in_srgb,var(--color-bbp-player)_50%,transparent)]',
+  },
+  tie: {
+    label: 'TIE',
+    color: 'var(--color-bbp-tie)',
+    ballClass:
+      'bg-bbp-tie shadow-[0_0_10px_color-mix(in_srgb,var(--color-bbp-tie)_50%,transparent)]',
+  },
 }
 
 const lastWinner = computed(() => (store.lastWinner ? winnerConfig[store.lastWinner] : null))
@@ -64,12 +79,27 @@ async function confirmReport(): Promise<void> {
         class="flex min-w-0 justify-center text-center"
         style="grid-area: winner"
       >
-        <p
-          class="min-w-0 text-xs font-bold tracking-[0.2em]"
-          :style="{ color: lastWinner.color, textShadow: '0 0 10px currentColor, 0 0 3px currentColor' }"
+        <div
+          class="flex items-center gap-3 rounded-lg border border-bbp-border bg-bbp-panel/40 px-4 py-2"
         >
-          ÚLTIMA JUGADA: {{ lastWinner.label }}
-        </p>
+          <span
+            :key="store.lastWinner ?? ''"
+            aria-hidden="true"
+            class="bbp-header-winner-pulse"
+            :style="{ color: lastWinner.color }"
+          >
+            <span
+              class="block h-5 w-5 shrink-0 rounded-full sm:h-6 sm:w-6"
+              :class="lastWinner.ballClass"
+            />
+          </span>
+          <p
+            class="min-w-0 text-sm font-bold tracking-[0.15em] sm:text-lg"
+            :style="{ color: lastWinner.color, textShadow: '0 0 10px currentColor, 0 0 3px currentColor' }"
+          >
+            ÚLTIMA JUGADA: {{ lastWinner.label }}
+          </p>
+        </div>
       </div>
 
       <div class="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3" style="grid-area: right">
@@ -162,6 +192,27 @@ async function confirmReport(): Promise<void> {
   .bbp-header-grid--with-winner {
     grid-template-columns: auto minmax(0, 1fr) auto;
     grid-template-areas: 'left winner right';
+  }
+}
+
+/*
+ * Glow pulsante de la bola de "Última jugada": late dos veces al remontarse
+ * el wrapper (key = lastWinner). Anima solo el box-shadow del wrapper con
+ * currentColor, sin tocar el shadow estático definido en `ballClass`.
+ */
+.bbp-header-winner-pulse {
+  display: inline-block;
+  border-radius: 9999px;
+  animation: bbp-winner-glow 1.1s ease-in-out 2;
+}
+
+@keyframes bbp-winner-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+  50% {
+    box-shadow: 0 0 18px 5px color-mix(in srgb, currentColor 55%, transparent);
   }
 }
 </style>
