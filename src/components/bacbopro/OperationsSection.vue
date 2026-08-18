@@ -31,20 +31,20 @@ const emit = defineEmits<{
     </h2>
     <div class="mt-2.5 grid grid-cols-2 divide-x divide-bbp-border">
       <OperationCard
-        :operation="oficialOperation"
-        channel-label="OFICIAL"
-        :loading="oficialLoading"
-        :cancelling="oficialCancelling"
-        embedded
-        @cancel="emit('cancelOficial')"
-      />
-      <OperationCard
         :operation="pruebasOperation"
         channel-label="PRUEBAS"
         :loading="pruebasLoading"
         :cancelling="pruebasCancelling"
         embedded
         @cancel="emit('cancelPruebas')"
+      />
+      <OperationCard
+        :operation="oficialOperation"
+        channel-label="OFICIAL"
+        :loading="oficialLoading"
+        :cancelling="oficialCancelling"
+        embedded
+        @cancel="emit('cancelOficial')"
       />
     </div>
   </section>
