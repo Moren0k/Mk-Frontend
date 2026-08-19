@@ -104,10 +104,15 @@ export interface ChannelReportSummary {
   alertsSent: number
 }
 
+/**
+ * GET /reports/summary expone exclusivamente el contexto oficial (el
+ * backend ya no manda "pruebas" en este endpoint: la API propia que
+ * consume el frontend representa solo el estado oficial; el resumen de
+ * pruebas solo viaja por Telegram, vía POST /admin/reports?channel=pruebas).
+ */
 export interface ReportSummary {
   uptimeMs: number
   oficial: ChannelReportSummary
-  pruebas: ChannelReportSummary
 }
 
 export type AdminReportChannel = ChannelId | 'todos'

@@ -206,7 +206,6 @@ describe('summaryToKpiItems', () => {
     const summary: ReportSummary = {
       uptimeMs: 7385000,
       oficial: { won: 8, lost: 2, alertsSent: 10 },
-      pruebas: { won: 5, lost: 3, alertsSent: 8 },
     }
     const items = summaryToKpiItems(summary, summary.uptimeMs)
     expect(items).toEqual([

@@ -74,7 +74,6 @@ vi.mock('@/api/endpoints', () => ({
       data: {
         uptimeMs: 7385000,
         oficial: { won: 8, lost: 2, alertsSent: 10 },
-        pruebas: { won: 0, lost: 0, alertsSent: 0 },
       },
       requestId: 'r4',
     }),
