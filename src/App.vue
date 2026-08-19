@@ -6,9 +6,27 @@ import DashboardSkeleton from '@/components/DashboardSkeleton.vue'
 import ToastStack from '@/components/ui/ToastStack.vue'
 import { useAccessGate } from '@/composables/useAccessGate'
 import { useBacboproStore } from '@/stores/bacbopro'
+import { useBacboproNotifications } from '@/composables/useBacboproNotifications'
 
 const { isUnlocked } = useAccessGate()
 const store = useBacboproStore()
+useBacboproNotifications()
+
+// El store (SSE, resúmenes, historial) vive mientras la app esté desbloqueada,
+// sin importar a qué página se navegue — así "Panel" y "Calculadora de riesgo"
+// comparten la misma conexión en vivo en vez de reconectar en cada cambio de
+// ruta (lo que antes vaciaba momentáneamente el contexto del sistema).
+watch(
+  isUnlocked,
+  (unlocked) => {
+    if (unlocked) {
+      void store.initialize()
+    } else {
+      store.dispose()
+    }
+  },
+  { immediate: true },
+)
 
 const MIN_REVEAL_HOLD_MS = 350
 const MAX_REVEAL_MS = 1400

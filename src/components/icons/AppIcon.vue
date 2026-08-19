@@ -16,6 +16,10 @@ export type IconName =
   | 'lock'
   | 'eye'
   | 'eye-off'
+  | 'calculator'
+  | 'home'
+  | 'menu'
+  | 'send'
 
 interface Props {
   name: IconName
@@ -125,6 +129,37 @@ withDefaults(defineProps<Props>(), {
       <path
         d="M9.9 4.24A10.9 10.9 0 0 1 12 4c6.5 0 10 8 10 8a18.5 18.5 0 0 1-4.22 5.06M6.1 6.1C3.51 7.74 2 12 2 12s1.2 2.7 3.6 4.8"
       />
+    </template>
+
+    <template v-else-if="name === 'calculator'">
+      <rect x="4" y="2" width="16" height="20" rx="2" />
+      <path d="M8 6h8" />
+      <path d="M8 10.01h.01" />
+      <path d="M12 10.01h.01" />
+      <path d="M16 10.01h.01" />
+      <path d="M8 14.01h.01" />
+      <path d="M12 14.01h.01" />
+      <path d="M16 14.01h.01" />
+      <path d="M8 18.01h.01" />
+      <path d="M12 18.01h.01" />
+      <path d="M16 18.01h.01" />
+    </template>
+
+    <template v-else-if="name === 'home'">
+      <path d="M3 11.5 12 4l9 7.5" />
+      <path d="M5.5 9.5V20h13V9.5" />
+      <path d="M9.5 20v-6h5v6" />
+    </template>
+
+    <template v-else-if="name === 'menu'">
+      <path d="M4 6h16" />
+      <path d="M4 12h16" />
+      <path d="M4 18h16" />
+    </template>
+
+    <template v-else-if="name === 'send'">
+      <path d="m22 2-7 20-4-9-9-4Z" />
+      <path d="M22 2 11 13" />
     </template>
   </svg>
 </template>

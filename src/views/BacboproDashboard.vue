@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed } from 'vue'
 
 import BacboproHeader from '@/components/bacbopro/BacboproHeader.vue'
 import BacboproFooter from '@/components/bacbopro/BacboproFooter.vue'
+import SideNav from '@/components/tools/SideNav.vue'
 import ToggleCard from '@/components/bacbopro/ToggleCard.vue'
 import KpiGrid from '@/components/bacbopro/KpiGrid.vue'
 import StatsSection from '@/components/bacbopro/StatsSection.vue'
@@ -11,14 +12,12 @@ import HistoryPanel from '@/components/bacbopro/HistoryPanel.vue'
 import OperationsSection from '@/components/bacbopro/OperationsSection.vue'
 
 import { useBacboproStore } from '@/stores/bacbopro'
-import { useBacboproNotifications } from '@/composables/useBacboproNotifications'
 import type { KpiItem } from '@/types/bacbopro'
 
 import telegramLogo from '@/assets/images/Mk_Pruebas_Logo.webp'
 import oficialLogo from '@/assets/images/Mk_Oficial_Logo.webp'
 
 const store = useBacboproStore()
-useBacboproNotifications()
 
 const EMPTY_KPI_ITEMS: KpiItem[] = [
   { label: 'GANADAS', value: '—', tone: 'green' },
@@ -61,26 +60,16 @@ function confirmBacBoState(value: boolean): void {
 function confirmBacBoStrategy(id: string): void {
   void store.applyChannelPatch('oficial', { strategyId: id })
 }
-
-onMounted(() => {
-  void store.initialize()
-})
-
-onUnmounted(() => {
-  store.dispose()
-})
 </script>
 
 <template>
   <div class="flex min-h-screen flex-col items-center bg-bbp-bg font-sans text-gray-100">
     <BacboproHeader />
+    <SideNav />
     <main
       class="mx-auto grid w-[90%] max-w-[1600px] flex-1 grid-cols-1 items-start gap-7 py-5 pb-7 sm:py-6 sm:pb-9 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:gap-9 2xl:max-w-[1920px] min-[2560px]:max-w-[2400px]"
     >
-      <KpiGrid
-        class="min-w-0 lg:col-start-1 lg:row-start-1"
-        :items="kpiItems"
-      />
+      <KpiGrid class="min-w-0 lg:col-start-1 lg:row-start-1" :items="kpiItems" />
       <StatsSection
         class="min-w-0 lg:col-start-1 lg:row-start-2"
         :blocks="store.statsBlocks"
@@ -91,10 +80,10 @@ onUnmounted(() => {
         :columns="store.streakDisplayColumns"
         :loading="historyLoading"
       />
-      <aside
-        class="min-w-0 max-w-full content-start lg:col-start-2 lg:row-start-1 lg:row-span-4"
-      >
-        <div class="bbp-glass bbp-elevation-2 min-w-0 max-w-full overflow-hidden rounded-lg border border-bbp-border">
+      <aside class="min-w-0 max-w-full content-start lg:col-start-2 lg:row-start-1 lg:row-span-4">
+        <div
+          class="bbp-glass bbp-elevation-2 min-w-0 max-w-full overflow-hidden rounded-lg border border-bbp-border"
+        >
           <div
             class="grid grid-cols-2 divide-x divide-bbp-border border-b-2 border-bbp-border-strong"
           >

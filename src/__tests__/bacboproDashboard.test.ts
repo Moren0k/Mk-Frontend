@@ -1,9 +1,37 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises, DOMWrapper, type VueWrapper } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
+import { createRouter, createMemoryHistory } from 'vue-router'
 import BacboproDashboard from '@/views/BacboproDashboard.vue'
+import { useBacboproStore } from '@/stores/bacbopro'
+import { useSideNav } from '@/composables/useSideNav'
 import { ApiError } from '@/api/client'
 import type { ChannelState, HistoryItem, OperationVm } from '@/api/types'
+
+// SideNav usa <RouterLink>/useRoute(), así que el montaje necesita un
+// router activo; las rutas reales no importan para estos tests (ninguno
+// navega), solo que existan '/' y '/herramientas' para resolver los links.
+const testRouter = createRouter({
+  history: createMemoryHistory(),
+  routes: [
+    { path: '/', component: { template: '<div />' } },
+    { path: '/herramientas', component: { template: '<div />' } },
+  ],
+})
+
+// El store ya no se inicializa desde la propia vista (eso ahora vive en
+// App.vue, para sobrevivir a la navegación entre páginas) — el test lo
+// dispara a mano, igual que haría el watcher de App.vue al desbloquear.
+function mountDashboard(): VueWrapper {
+  void useBacboproStore().initialize()
+  return mount(BacboproDashboard, { global: { plugins: [testRouter] } })
+}
+
+// El badge de estado, "ENVIAR RESUMEN" y "Cerrar sesión" viven en el menú
+// lateral (oculto por defecto) — hay que abrirlo desde el botón del header.
+async function openMenu(target: VueWrapper): Promise<void> {
+  await target.get('[aria-label="Abrir menú"]').trigger('click')
+}
 
 const api = vi.hoisted(() => {
   const oficialConfig: ChannelState = {
@@ -164,7 +192,8 @@ describe('BacboproDashboard (integración API)', () => {
       abort: vi.fn(),
     }))
     setActivePinia(createPinia())
-    wrapper = mount(BacboproDashboard)
+    useSideNav().close()
+    wrapper = mountDashboard()
   })
 
   afterEach(() => {
@@ -176,6 +205,8 @@ describe('BacboproDashboard (integración API)', () => {
     expect(wrapper.text()).toContain('MKBACBOT')
     expect(wrapper.text()).not.toContain('BACBOPRO')
     expect(wrapper.text()).not.toContain('V4.2')
+
+    await openMenu(wrapper)
     expect(wrapper.text()).toContain('CASINO EN VIVO: ACTIVO')
   })
 
@@ -220,7 +251,7 @@ describe('BacboproDashboard (integración API)', () => {
     )
     wrapper.unmount()
     setActivePinia(createPinia())
-    wrapper = mount(BacboproDashboard)
+    wrapper = mountDashboard()
     await flushPromises()
 
     expect(wrapper.text()).not.toContain('02:03:05')
@@ -285,7 +316,7 @@ describe('BacboproDashboard (integración API)', () => {
     api.state.oficialOperation = null
     wrapper.unmount()
     setActivePinia(createPinia())
-    wrapper = mount(BacboproDashboard)
+    wrapper = mountDashboard()
     await flushPromises()
 
     const emptyStates = wrapper.findAll('p').filter((p) => p.text() === 'SIN OPERACIÓN ACTIVA')
@@ -296,9 +327,7 @@ describe('BacboproDashboard (integración API)', () => {
   describe('strategy confirmation flow (PATCH /channels)', () => {
     it('opens a confirmation modal without applying the strategy immediately', async () => {
       await flushPromises()
-      const officialSelect = wrapper.find(
-        '[aria-label="Seleccionar estrategia de BAC BO OFICIAL"]',
-      )
+      const officialSelect = wrapper.find('[aria-label="Seleccionar estrategia de BAC BO OFICIAL"]')
       const telegramSelect = wrapper.find(
         '[aria-label="Seleccionar estrategia de PRUEBAS TELEGRAM"]',
       )
@@ -313,9 +342,7 @@ describe('BacboproDashboard (integración API)', () => {
 
     it('Cancelar restores the active strategy', async () => {
       await flushPromises()
-      const officialSelect = wrapper.find(
-        '[aria-label="Seleccionar estrategia de BAC BO OFICIAL"]',
-      )
+      const officialSelect = wrapper.find('[aria-label="Seleccionar estrategia de BAC BO OFICIAL"]')
       await officialSelect.setValue('streak-3')
 
       const cancelButton = body()
@@ -331,9 +358,7 @@ describe('BacboproDashboard (integración API)', () => {
 
     it('Sí, cambiar sends PATCH and updates the active strategy', async () => {
       await flushPromises()
-      const officialSelect = wrapper.find(
-        '[aria-label="Seleccionar estrategia de BAC BO OFICIAL"]',
-      )
+      const officialSelect = wrapper.find('[aria-label="Seleccionar estrategia de BAC BO OFICIAL"]')
       await officialSelect.setValue('streak-3')
 
       expect(body().text()).toContain('¿Cambiar estrategia?')
@@ -434,6 +459,7 @@ describe('BacboproDashboard (integración API)', () => {
   describe('send report flow (POST /admin/reports)', () => {
     it('requires confirmation and disables double sends', async () => {
       await flushPromises()
+      await openMenu(wrapper)
       const sendButton = wrapper
         .findAll('button')
         .find((button) => button.text() === 'ENVIAR RESUMEN')
@@ -459,8 +485,9 @@ describe('BacboproDashboard (integración API)', () => {
       )
       wrapper.unmount()
       setActivePinia(createPinia())
-      wrapper = mount(BacboproDashboard)
+      wrapper = mountDashboard()
       await flushPromises()
+      await openMenu(wrapper)
 
       expect(wrapper.text()).toContain('CASINO EN VIVO: DESCONECTADO')
       expect(wrapper.text()).toContain('SIN CONEXIÓN EN VIVO')
@@ -472,9 +499,7 @@ describe('BacboproDashboard (integración API)', () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
     await flushPromises()
 
-    const officialSelect = wrapper.find(
-      '[aria-label="Seleccionar estrategia de BAC BO OFICIAL"]',
-    )
+    const officialSelect = wrapper.find('[aria-label="Seleccionar estrategia de BAC BO OFICIAL"]')
     await officialSelect.setValue('streak-3')
     const sections = wrapper.findAll('[aria-label="Selector de estrategia"]')
     const officialSection = sections[1]!

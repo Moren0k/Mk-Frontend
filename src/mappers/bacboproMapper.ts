@@ -7,6 +7,7 @@ import type {
   Winner,
 } from '@/api/types'
 import type {
+  EffectivenessStats,
   KpiItem,
   NonEmptyOutcome,
   OperationDisplayState,
@@ -50,10 +51,7 @@ export function historyToOutcomes(history: HistoryItem[]): NonEmptyOutcome[] {
   return history.map((item) => winnerToOutcome(item.winner))
 }
 
-export function buildStreakColumns(
-  results: NonEmptyOutcome[],
-  maxRows: number,
-): StreakColumn[] {
+export function buildStreakColumns(results: NonEmptyOutcome[], maxRows: number): StreakColumn[] {
   const columns: StreakColumn[] = []
   for (const outcome of results) {
     const last = columns[columns.length - 1]
@@ -194,11 +192,7 @@ export function buildStableBigRoadColumns(
   return cursor
 }
 
-export function buildHistoryGrid(
-  results: Outcome[],
-  columns: number,
-  rows: number,
-): Outcome[][] {
+export function buildHistoryGrid(results: Outcome[], columns: number, rows: number): Outcome[][] {
   const visible = results.slice(-(columns * rows))
   const grid: Outcome[][] = []
   for (let row = 0; row < rows; row++) {
@@ -380,10 +374,7 @@ export function buildStatsBlock(results: NonEmptyOutcome[], title: string): Stat
   return { title, segments }
 }
 
-export function rollingToStatsBlock(
-  rolling: StatsRollingPayload,
-  title: string,
-): StatsBlock {
+export function rollingToStatsBlock(rolling: StatsRollingPayload, title: string): StatsBlock {
   return {
     title,
     segments: [
@@ -401,6 +392,15 @@ export function summaryToKpiItems(summary: ReportSummary, liveUptimeMs: number):
     { label: 'PERDIDAS', value: String(summary.oficial.lost), tone: 'red' },
     { label: 'TIEMPO', value: formatUptime(liveUptimeMs), tone: 'mono' },
   ]
+}
+
+/** Efectividad real observada (canal oficial), derivada de `ReportSummary`. */
+export function summaryToEffectivenessStats(summary: ReportSummary): EffectivenessStats {
+  const won = summary.oficial.won
+  const lost = summary.oficial.lost
+  const totalOperations = won + lost
+  const effectivenessPct = totalOperations > 0 ? (won / totalOperations) * 100 : 0
+  return { totalOperations, wonOperations: won, lostOperations: lost, effectivenessPct }
 }
 
 export function formatUptime(uptimeMs: number): string {
@@ -427,10 +427,7 @@ const OPERATION_ALERT_LABELS: Record<OperationDisplayState, string> = {
   CANCELLED: 'OPERACIÓN CANCELADA',
 }
 
-export function operationToEntry(
-  operation: OperationVm,
-  maxMartingales: number,
-): OperationEntry {
+export function operationToEntry(operation: OperationVm, maxMartingales: number): OperationEntry {
   const safeMaxMartingales = Math.min(Math.max(maxMartingales, 0), 2)
   return {
     alertLabel: OPERATION_ALERT_LABELS[operation.currentState],

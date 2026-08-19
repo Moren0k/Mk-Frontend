@@ -57,3 +57,11 @@ export interface OperationEntry {
   maxMartingales: number
   state: OperationDisplayState
 }
+
+/** Estadísticas reales del canal oficial, derivadas de `ReportSummary` (GET /reports/summary). */
+export interface EffectivenessStats {
+  totalOperations: number
+  wonOperations: number
+  lostOperations: number
+  effectivenessPct: number
+}

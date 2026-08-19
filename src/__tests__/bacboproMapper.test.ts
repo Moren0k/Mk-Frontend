@@ -25,6 +25,7 @@ import {
   rollingToStatsBlock,
   STREAK_MAX_ROWS,
   strategyToOption,
+  summaryToEffectivenessStats,
   summaryToKpiItems,
   winnerToOutcome,
 } from '@/mappers/bacboproMapper'
@@ -72,10 +73,7 @@ describe('historyToOutcomes', () => {
 
 describe('buildStreakColumns', () => {
   it('keeps equal outcomes in the same column and splits on change', () => {
-    const columns = buildStreakColumns(
-      ['banker', 'banker', 'player', 'player', 'tie'],
-      6,
-    )
+    const columns = buildStreakColumns(['banker', 'banker', 'player', 'player', 'tie'], 6)
     expect(columns).toEqual([
       { outcome: 'banker', count: 2 },
       { outcome: 'player', count: 2 },
@@ -130,8 +128,7 @@ describe('buildHistoryGrid', () => {
     const totalPlays = 200
     // Cada "jugada" se etiqueta con su número para poder rastrear su celda exacta.
     const plays = Array.from({ length: totalPlays }, (_, i) => `play-${i + 1}`) as unknown as (
-      | 'player'
-      | 'banker'
+      'player' | 'banker'
     )[]
     const grid = buildHistoryGrid(plays, 35, 6)
 
@@ -214,6 +211,27 @@ describe('summaryToKpiItems', () => {
       { label: 'PERDIDAS', value: '2', tone: 'red' },
       { label: 'TIEMPO', value: '02:03:05', tone: 'mono' },
     ])
+  })
+})
+
+describe('summaryToEffectivenessStats', () => {
+  it('calcula operaciones totales y efectividad a partir del canal oficial', () => {
+    const summary: ReportSummary = {
+      uptimeMs: 0,
+      oficial: { won: 87, lost: 10, alertsSent: 120 },
+    }
+    const stats = summaryToEffectivenessStats(summary)
+    expect(stats.totalOperations).toBe(97)
+    expect(stats.wonOperations).toBe(87)
+    expect(stats.lostOperations).toBe(10)
+    expect(stats.effectivenessPct).toBeCloseTo(89.69, 1)
+  })
+
+  it('nunca divide por cero: 0 operaciones da 0% de efectividad', () => {
+    const summary: ReportSummary = { uptimeMs: 0, oficial: { won: 0, lost: 0, alertsSent: 0 } }
+    const stats = summaryToEffectivenessStats(summary)
+    expect(stats.totalOperations).toBe(0)
+    expect(stats.effectivenessPct).toBe(0)
   })
 })
 
@@ -307,10 +325,7 @@ describe('appendOutcomeToColumns', () => {
 
     // La séptima jugada ya no cabe en la primera columna (llena en 6): abre una nueva.
     columns = appendOutcomeToColumns(columns, 'banker', 6, 32)
-    expect(columns).toEqual([
-      ['player', 'banker', 'player', 'player', 'tie', 'tie'],
-      ['banker'],
-    ])
+    expect(columns).toEqual([['player', 'banker', 'player', 'player', 'tie', 'tie'], ['banker']])
   })
 
   it('does not touch already-closed columns when the active one keeps growing', () => {
