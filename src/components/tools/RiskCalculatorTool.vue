@@ -6,6 +6,7 @@ import {
   GALE_MULTIPLIERS,
   MIN_BET,
   calculateBankrollStrategy,
+  calculateRequiredCapital,
   minBalanceRequiredFor,
 } from '@/utils/bankrollCalculator'
 import { formatCurrencyCOP, formatDigitsWithThousands, parseCurrencyAmount } from '@/utils/currency'
@@ -23,14 +24,23 @@ import { useBacboproStore } from '@/stores/bacbopro'
 
 const store = useBacboproStore()
 
+type CalculatorMode = 'balance' | 'bet'
+
+const mode = ref<CalculatorMode>('balance')
 const rawBalanceInput = ref('')
+const rawBetInput = ref('')
 const rawCurrentInput = ref('')
 const selectedProfileId = ref<RiskProfileId>(DEFAULT_RISK_PROFILE_ID)
 
 const hasBalanceInput = computed(() => rawBalanceInput.value.trim() !== '')
+const hasBetInput = computed(() => rawBetInput.value.trim() !== '')
+const hasPrimaryInput = computed(() =>
+  mode.value === 'balance' ? hasBalanceInput.value : hasBetInput.value,
+)
 const hasCurrentInput = computed(() => rawCurrentInput.value.trim() !== '')
 
 const initialBalance = computed(() => parseCurrencyAmount(rawBalanceInput.value))
+const desiredBaseBet = computed(() => parseCurrencyAmount(rawBetInput.value))
 const currentBalanceValue = computed(() => parseCurrencyAmount(rawCurrentInput.value))
 
 const selectedProfile = computed(() => getRiskProfile(selectedProfileId.value))
@@ -38,8 +48,20 @@ const selectedProfile = computed(() => getRiskProfile(selectedProfileId.value))
 const bankrollResult = computed(() =>
   calculateBankrollStrategy(initialBalance.value, selectedProfile.value.cyclesToSurvive),
 )
+const requiredCapitalResult = computed(() =>
+  calculateRequiredCapital(desiredBaseBet.value, selectedProfile.value.cyclesToSurvive),
+)
+
+// Saldo "efectivo" que alimenta el Stop Loss / Take Profit y el seguimiento
+// en tiempo real: viene directo del input en modo saldo, o del capital
+// requerido ya calculado en modo apuesta.
+const effectiveCapital = computed(() => {
+  if (mode.value === 'balance') return initialBalance.value
+  return requiredCapitalResult.value?.requiredCapital ?? 0
+})
+
 const sessionLimits = computed(() =>
-  calculateSessionLimits(initialBalance.value, selectedProfileId.value),
+  calculateSessionLimits(effectiveCapital.value, selectedProfileId.value),
 )
 
 const statusResult = computed(() => {
@@ -56,10 +78,18 @@ const effectivenessLabel = computed(() =>
   contextStats.value ? contextStats.value.effectivenessPct.toFixed(2).replace('.', ',') : null,
 )
 
+function setMode(next: CalculatorMode): void {
+  mode.value = next
+}
+
 // Puntuación de miles en vivo: en cada tecla se reformatea el valor
 // completo, así el campo siempre muestra "500.000" mientras se escribe.
 function handleBalanceInput(event: Event): void {
   rawBalanceInput.value = formatDigitsWithThousands((event.target as HTMLInputElement).value)
+}
+
+function handleBetInput(event: Event): void {
+  rawBetInput.value = formatDigitsWithThousands((event.target as HTMLInputElement).value)
 }
 
 function handleCurrentInput(event: Event): void {
@@ -131,6 +161,39 @@ const STATUS_CONFIG: Record<SessionStatus, StatusConfig> = {
     </p>
 
     <div class="mx-auto mt-5 max-w-sm">
+      <div class="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Modo de cálculo">
+        <button
+          type="button"
+          role="radio"
+          :aria-checked="mode === 'balance'"
+          class="rounded-md border px-3 py-2 text-center text-[0.6875rem] font-bold tracking-wider transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-bbp-focus/50"
+          :class="
+            mode === 'balance'
+              ? 'border-bbp-active/40 bg-bbp-active/10 text-bbp-active'
+              : 'border-bbp-border text-gray-400 hover:border-bbp-border-strong hover:text-gray-100'
+          "
+          @click="setMode('balance')"
+        >
+          TENGO UN SALDO
+        </button>
+        <button
+          type="button"
+          role="radio"
+          :aria-checked="mode === 'bet'"
+          class="rounded-md border px-3 py-2 text-center text-[0.6875rem] font-bold tracking-wider transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-bbp-focus/50"
+          :class="
+            mode === 'bet'
+              ? 'border-bbp-active/40 bg-bbp-active/10 text-bbp-active'
+              : 'border-bbp-border text-gray-400 hover:border-bbp-border-strong hover:text-gray-100'
+          "
+          @click="setMode('bet')"
+        >
+          QUIERO APOSTAR UN MONTO FIJO
+        </button>
+      </div>
+    </div>
+
+    <div v-if="mode === 'balance'" class="mx-auto mt-5 max-w-sm">
       <label
         for="risk-initial-balance"
         class="block text-xs font-bold tracking-[0.15em] text-gray-400"
@@ -166,6 +229,37 @@ const STATUS_CONFIG: Record<SessionStatus, StatusConfig> = {
       </p>
     </div>
 
+    <div v-else class="mx-auto mt-5 max-w-sm">
+      <label for="risk-desired-bet" class="block text-xs font-bold tracking-[0.15em] text-gray-400">
+        ¿CUÁNTO QUIERES APOSTAR POR JUGADA?
+      </label>
+      <div class="relative mt-1.5">
+        <span
+          class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm font-semibold text-gray-500"
+          aria-hidden="true"
+        >
+          $
+        </span>
+        <input
+          id="risk-desired-bet"
+          type="text"
+          inputmode="numeric"
+          autocomplete="off"
+          placeholder="Ej: 50.000"
+          class="w-full rounded-md border border-bbp-border-strong bg-bbp-bg/80 py-2.5 pr-3 pl-7 text-sm font-semibold text-gray-100 outline-none transition-colors duration-150 focus-visible:border-bbp-focus focus-visible:ring-2 focus-visible:ring-bbp-focus/40"
+          :value="rawBetInput"
+          @input="handleBetInput"
+        />
+      </div>
+      <p v-if="hasBetInput" class="mt-1.5 text-xs text-gray-500">
+        Apuesta detectada:
+        <span class="font-semibold text-gray-300">{{ formatCurrencyCOP(desiredBaseBet) }}</span>
+      </p>
+      <p v-else class="mt-1.5 text-xs text-gray-500">
+        La apuesta mínima que puedes calcular es {{ formatCurrencyCOP(MIN_BET) }}.
+      </p>
+    </div>
+
     <div class="mx-auto mt-5 max-w-sm">
       <p class="text-center text-xs font-bold tracking-[0.15em] text-gray-400">PERFIL DE RIESGO</p>
       <div class="mt-2 grid grid-cols-3 gap-2" role="radiogroup" aria-label="Perfil de riesgo">
@@ -196,32 +290,144 @@ const STATUS_CONFIG: Record<SessionStatus, StatusConfig> = {
       </div>
     </div>
 
-    <p v-if="!hasBalanceInput" class="mx-auto mt-6 max-w-sm text-center text-sm text-gray-400">
-      Ingresa el saldo con el que inicias la sesión para calcular tu apuesta base, tu Stop Loss y tu
-      Take Profit.
+    <p v-if="!hasPrimaryInput" class="mx-auto mt-6 max-w-sm text-center text-sm text-gray-400">
+      <template v-if="mode === 'balance'">
+        Ingresa el saldo con el que inicias la sesión para calcular tu apuesta base, tu Stop Loss y
+        tu Take Profit.
+      </template>
+      <template v-else>
+        Ingresa cuánto quieres apostar por jugada para calcular el capital que necesitas, tu Stop
+        Loss y tu Take Profit.
+      </template>
     </p>
 
     <template v-else-if="!sessionLimits">
       <p class="mx-auto mt-6 max-w-sm text-center text-sm text-gray-400">
-        Ingresa un saldo válido mayor a $0 para calcular tus resultados.
+        <template v-if="mode === 'balance'">
+          Ingresa un saldo válido mayor a $0 para calcular tus resultados.
+        </template>
+        <template v-else>
+          Ingresa una apuesta válida de al menos {{ formatCurrencyCOP(MIN_BET) }} para calcular tus
+          resultados.
+        </template>
       </p>
     </template>
 
     <template v-else>
-      <!-- Apuesta base -->
-      <div v-if="bankrollResult.sufficient" class="mx-auto mt-6 max-w-sm text-center">
-        <p class="text-xs font-bold tracking-[0.15em] text-gray-400">
-          TU APUESTA BASE MÁXIMA RECOMENDADA
-        </p>
+      <!-- Apuesta base recomendada (modo saldo) -->
+      <template v-if="mode === 'balance'">
+        <div v-if="bankrollResult.sufficient" class="mx-auto mt-6 max-w-sm text-center">
+          <p class="text-xs font-bold tracking-[0.15em] text-gray-400">
+            TU APUESTA BASE MÁXIMA RECOMENDADA
+          </p>
+          <p
+            class="mt-2 text-4xl font-bold text-bbp-active sm:text-5xl [text-shadow:0_0_14px_currentColor]"
+          >
+            {{ formatCurrencyCOP(bankrollResult.baseBet) }}
+          </p>
+          <p class="mx-auto mt-3 max-w-xs text-xs text-gray-400">
+            Con tu saldo y perfil actuales, esta es la apuesta base máxima recomendada para poder
+            soportar hasta {{ bankrollResult.cyclesToSurvive }} ciclos perdidos consecutivos con la
+            estrategia {{ galeProgressionLabel }}.
+          </p>
+
+          <div class="mt-5">
+            <p class="text-center text-xs font-bold tracking-[0.15em] text-gray-400">
+              TU PROGRESIÓN
+            </p>
+            <div class="mt-2 grid grid-cols-3 gap-2">
+              <div class="rounded-md border border-bbp-border bg-bbp-bg/60 p-3 text-center">
+                <p class="text-[0.625rem] font-bold tracking-wider text-gray-500">APUESTA BASE</p>
+                <p class="mt-1 font-mono text-sm font-bold text-gray-100">
+                  {{ formatCurrencyCOP(bankrollResult.baseBet) }}
+                </p>
+              </div>
+              <div class="rounded-md border border-bbp-border bg-bbp-bg/60 p-3 text-center">
+                <p class="text-[0.625rem] font-bold tracking-wider text-gray-500">GALE 1</p>
+                <p class="mt-1 font-mono text-sm font-bold text-bbp-mg1">
+                  {{ formatCurrencyCOP(bankrollResult.gale1) }}
+                </p>
+              </div>
+              <div class="rounded-md border border-bbp-border bg-bbp-bg/60 p-3 text-center">
+                <p class="text-[0.625rem] font-bold tracking-wider text-gray-500">GALE 2</p>
+                <p class="mt-1 font-mono text-sm font-bold text-bbp-mg2">
+                  {{ formatCurrencyCOP(bankrollResult.gale2) }}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-5">
+            <p class="text-center text-xs font-bold tracking-[0.15em] text-gray-400">
+              RESUMEN DE RIESGO
+            </p>
+            <dl
+              class="mt-2 space-y-1.5 rounded-md border border-bbp-border bg-bbp-bg/60 p-3 text-xs"
+            >
+              <div class="flex items-center justify-between gap-2">
+                <dt class="text-gray-400">Costo de 1 ciclo perdido completo</dt>
+                <dd class="font-mono font-semibold text-gray-100">
+                  {{ formatCurrencyCOP(bankrollResult.cycleLossCost) }}
+                </dd>
+              </div>
+              <div class="flex items-center justify-between gap-2">
+                <dt class="text-gray-400">
+                  Costo de {{ bankrollResult.cyclesToSurvive }} ciclos perdidos consecutivos
+                </dt>
+                <dd class="font-mono font-semibold text-bbp-banker">
+                  {{ formatCurrencyCOP(bankrollResult.totalLossCost) }}
+                </dd>
+              </div>
+              <div
+                class="flex items-center justify-between gap-2 border-t border-bbp-border pt-1.5"
+              >
+                <dt class="text-gray-400">Saldo inicial</dt>
+                <dd class="font-mono font-semibold text-gray-100">
+                  {{ formatCurrencyCOP(bankrollResult.balance) }}
+                </dd>
+              </div>
+              <div class="flex items-center justify-between gap-2">
+                <dt class="text-gray-400">
+                  Saldo estimado tras {{ bankrollResult.cyclesToSurvive }} ciclos perdidos
+                </dt>
+                <dd class="font-mono font-semibold text-bbp-active">
+                  {{ formatCurrencyCOP(bankrollResult.remainingBalance) }}
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+
+        <div
+          v-else
+          class="mx-auto mt-6 max-w-sm rounded-lg border border-bbp-banker/40 bg-bbp-banker/10 p-4 text-center"
+        >
+          <p class="text-sm font-bold tracking-wider text-bbp-banker">
+            TU SALDO NO ALCANZA PARA UNA APUESTA BASE CON ESTE PERFIL
+          </p>
+          <p class="mt-2 text-xs text-gray-300">
+            Con el perfil {{ selectedProfile.label.toLowerCase() }} (soporta
+            {{ bankrollResult.cyclesToSurvive }} ciclos perdidos consecutivos) necesitas un saldo
+            mínimo de {{ formatCurrencyCOP(bankrollResult.minBalanceRequired) }}. Te faltan
+            {{ formatCurrencyCOP(bankrollResult.missingAmount) }}, o puedes elegir un perfil más
+            agresivo que exija menos capital.
+          </p>
+        </div>
+      </template>
+
+      <!-- Capital requerido (modo apuesta fija) -->
+      <div v-else class="mx-auto mt-6 max-w-sm text-center">
+        <p class="text-xs font-bold tracking-[0.15em] text-gray-400">CAPITAL QUE NECESITAS</p>
         <p
           class="mt-2 text-4xl font-bold text-bbp-active sm:text-5xl [text-shadow:0_0_14px_currentColor]"
         >
-          {{ formatCurrencyCOP(bankrollResult.baseBet) }}
+          {{ formatCurrencyCOP(requiredCapitalResult?.requiredCapital ?? 0) }}
         </p>
         <p class="mx-auto mt-3 max-w-xs text-xs text-gray-400">
-          Con tu saldo y perfil actuales, esta es la apuesta base máxima recomendada para poder
-          soportar hasta {{ bankrollResult.cyclesToSurvive }} ciclos perdidos consecutivos con la
-          estrategia {{ galeProgressionLabel }}.
+          Para apostar {{ formatCurrencyCOP(requiredCapitalResult?.baseBet ?? 0) }} por jugada y
+          poder soportar hasta {{ requiredCapitalResult?.cyclesToSurvive }} ciclos perdidos
+          consecutivos con la estrategia {{ galeProgressionLabel }}, este es el capital que
+          necesitas.
         </p>
 
         <div class="mt-5">
@@ -230,19 +436,19 @@ const STATUS_CONFIG: Record<SessionStatus, StatusConfig> = {
             <div class="rounded-md border border-bbp-border bg-bbp-bg/60 p-3 text-center">
               <p class="text-[0.625rem] font-bold tracking-wider text-gray-500">APUESTA BASE</p>
               <p class="mt-1 font-mono text-sm font-bold text-gray-100">
-                {{ formatCurrencyCOP(bankrollResult.baseBet) }}
+                {{ formatCurrencyCOP(requiredCapitalResult?.baseBet ?? 0) }}
               </p>
             </div>
             <div class="rounded-md border border-bbp-border bg-bbp-bg/60 p-3 text-center">
               <p class="text-[0.625rem] font-bold tracking-wider text-gray-500">GALE 1</p>
               <p class="mt-1 font-mono text-sm font-bold text-bbp-mg1">
-                {{ formatCurrencyCOP(bankrollResult.gale1) }}
+                {{ formatCurrencyCOP(requiredCapitalResult?.gale1 ?? 0) }}
               </p>
             </div>
             <div class="rounded-md border border-bbp-border bg-bbp-bg/60 p-3 text-center">
               <p class="text-[0.625rem] font-bold tracking-wider text-gray-500">GALE 2</p>
               <p class="mt-1 font-mono text-sm font-bold text-bbp-mg2">
-                {{ formatCurrencyCOP(bankrollResult.gale2) }}
+                {{ formatCurrencyCOP(requiredCapitalResult?.gale2 ?? 0) }}
               </p>
             </div>
           </div>
@@ -256,49 +462,20 @@ const STATUS_CONFIG: Record<SessionStatus, StatusConfig> = {
             <div class="flex items-center justify-between gap-2">
               <dt class="text-gray-400">Costo de 1 ciclo perdido completo</dt>
               <dd class="font-mono font-semibold text-gray-100">
-                {{ formatCurrencyCOP(bankrollResult.cycleLossCost) }}
-              </dd>
-            </div>
-            <div class="flex items-center justify-between gap-2">
-              <dt class="text-gray-400">
-                Costo de {{ bankrollResult.cyclesToSurvive }} ciclos perdidos consecutivos
-              </dt>
-              <dd class="font-mono font-semibold text-bbp-banker">
-                {{ formatCurrencyCOP(bankrollResult.totalLossCost) }}
+                {{ formatCurrencyCOP(requiredCapitalResult?.cycleLossCost ?? 0) }}
               </dd>
             </div>
             <div class="flex items-center justify-between gap-2 border-t border-bbp-border pt-1.5">
-              <dt class="text-gray-400">Saldo inicial</dt>
-              <dd class="font-mono font-semibold text-gray-100">
-                {{ formatCurrencyCOP(bankrollResult.balance) }}
-              </dd>
-            </div>
-            <div class="flex items-center justify-between gap-2">
               <dt class="text-gray-400">
-                Saldo estimado tras {{ bankrollResult.cyclesToSurvive }} ciclos perdidos
+                Costo de {{ requiredCapitalResult?.cyclesToSurvive }} ciclos perdidos consecutivos
+                (= capital necesario)
               </dt>
-              <dd class="font-mono font-semibold text-bbp-active">
-                {{ formatCurrencyCOP(bankrollResult.remainingBalance) }}
+              <dd class="font-mono font-semibold text-bbp-banker">
+                {{ formatCurrencyCOP(requiredCapitalResult?.requiredCapital ?? 0) }}
               </dd>
             </div>
           </dl>
         </div>
-      </div>
-
-      <div
-        v-else
-        class="mx-auto mt-6 max-w-sm rounded-lg border border-bbp-banker/40 bg-bbp-banker/10 p-4 text-center"
-      >
-        <p class="text-sm font-bold tracking-wider text-bbp-banker">
-          TU SALDO NO ALCANZA PARA UNA APUESTA BASE CON ESTE PERFIL
-        </p>
-        <p class="mt-2 text-xs text-gray-300">
-          Con el perfil {{ selectedProfile.label.toLowerCase() }} (soporta
-          {{ bankrollResult.cyclesToSurvive }} ciclos perdidos consecutivos) necesitas un saldo
-          mínimo de {{ formatCurrencyCOP(bankrollResult.minBalanceRequired) }}. Te faltan
-          {{ formatCurrencyCOP(bankrollResult.missingAmount) }}, o puedes elegir un perfil más
-          agresivo que exija menos capital.
-        </p>
       </div>
 
       <!-- Stop Loss / Take Profit -->

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   MIN_BET,
   calculateBankrollStrategy,
+  calculateRequiredCapital,
   minBalanceRequiredFor,
 } from '@/utils/bankrollCalculator'
 
@@ -113,6 +114,44 @@ describe('calculateBankrollStrategy', () => {
         expect(result.balance).toBe(0)
         expect(result.missingAmount).toBe(105_000)
       }
+    }
+  })
+})
+
+describe('calculateRequiredCapital', () => {
+  it('calcula el capital exacto para una apuesta base de $50.000 (perfil recomendado)', () => {
+    const result = calculateRequiredCapital(50_000, RECOMENDADO_CYCLES)
+    expect(result).not.toBeNull()
+    expect(result?.baseBet).toBe(50_000)
+    expect(result?.gale1).toBe(100_000)
+    expect(result?.gale2).toBe(200_000)
+    expect(result?.cycleLossCost).toBe(350_000)
+    expect(result?.requiredCapital).toBe(1_050_000)
+  })
+
+  it('es el inverso exacto de calculateBankrollStrategy (round-trip)', () => {
+    for (const desiredBaseBet of [5_000, 20_000, 45_000, 100_000]) {
+      for (const cycles of [2, 3, 4]) {
+        const required = calculateRequiredCapital(desiredBaseBet, cycles)
+        expect(required).not.toBeNull()
+        const back = calculateBankrollStrategy(required!.requiredCapital, cycles)
+        expect(back.sufficient).toBe(true)
+        if (back.sufficient) {
+          expect(back.baseBet).toBe(desiredBaseBet)
+          expect(back.remainingBalance).toBe(0)
+        }
+      }
+    }
+  })
+
+  it('redondea la apuesta deseada hacia abajo a múltiplos de $5.000', () => {
+    const result = calculateRequiredCapital(52_999, RECOMENDADO_CYCLES)
+    expect(result?.baseBet).toBe(50_000)
+  })
+
+  it('devuelve null cuando la apuesta deseada no alcanza el mínimo del casino', () => {
+    for (const desiredBaseBet of [0, -5_000, NaN, 4_999]) {
+      expect(calculateRequiredCapital(desiredBaseBet, RECOMENDADO_CYCLES)).toBeNull()
     }
   })
 })

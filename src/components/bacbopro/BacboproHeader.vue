@@ -40,7 +40,7 @@ const lastWinner = computed(() => (store.lastWinner ? winnerConfig[store.lastWin
 <template>
   <header class="bbp-glass bbp-elevation-1 sticky top-0 z-20 w-full border-b border-bbp-border">
     <div
-      class="bbp-header-grid mx-auto w-full max-w-[1600px] items-center gap-x-2 gap-y-2 px-4 py-4 sm:gap-x-4 sm:px-6 sm:py-5 lg:px-8 2xl:max-w-[1920px] min-[2560px]:max-w-[2400px]"
+      class="bbp-header-grid mx-auto w-full max-w-[1600px] items-center gap-x-2 gap-y-1.5 px-4 py-2 sm:gap-x-4 sm:px-6 sm:py-2.5 lg:px-8 2xl:max-w-[1920px] min-[2560px]:max-w-[2400px]"
       :class="{ 'bbp-header-grid--with-winner': lastWinner }"
     >
       <div class="flex min-w-0 items-center" style="grid-area: left">
@@ -48,10 +48,10 @@ const lastWinner = computed(() => (store.lastWinner ? winnerConfig[store.lastWin
           type="button"
           title="Abrir menú"
           aria-label="Abrir menú"
-          class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-bbp-border text-gray-400 transition-colors duration-150 hover:border-bbp-border-strong hover:text-gray-100 focus-visible:ring-2 focus-visible:ring-bbp-focus/50"
+          class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-bbp-border text-gray-400 transition-colors duration-150 hover:border-bbp-border-strong hover:text-gray-100 focus-visible:ring-2 focus-visible:ring-bbp-focus/50"
           @click="toggle"
         >
-          <AppIcon name="menu" :size="18" />
+          <AppIcon name="menu" :size="16" />
         </button>
       </div>
 
@@ -61,7 +61,7 @@ const lastWinner = computed(() => (store.lastWinner ? winnerConfig[store.lastWin
         style="grid-area: winner"
       >
         <div
-          class="flex items-center gap-3 rounded-lg border border-bbp-border bg-bbp-panel/40 px-4 py-2"
+          class="flex items-center gap-2 rounded-lg border border-bbp-border bg-bbp-panel/40 px-3 py-1"
         >
           <span
             :key="store.lastWinner ?? ''"
@@ -70,12 +70,12 @@ const lastWinner = computed(() => (store.lastWinner ? winnerConfig[store.lastWin
             :style="{ color: lastWinner.color }"
           >
             <span
-              class="block h-5 w-5 shrink-0 rounded-full sm:h-6 sm:w-6"
+              class="block h-4 w-4 shrink-0 rounded-full sm:h-5 sm:w-5"
               :class="lastWinner.ballClass"
             />
           </span>
           <p
-            class="min-w-0 text-sm font-bold tracking-[0.15em] sm:text-lg"
+            class="min-w-0 text-xs font-bold tracking-[0.15em] sm:text-sm"
             :style="{
               color: lastWinner.color,
               textShadow: '0 0 10px currentColor, 0 0 3px currentColor',
@@ -87,7 +87,7 @@ const lastWinner = computed(() => (store.lastWinner ? winnerConfig[store.lastWin
       </div>
 
       <div class="flex min-w-0 items-center justify-end" style="grid-area: right">
-        <h1 class="text-2xl leading-[1.4] tracking-[-0.02em] sm:text-3xl lg:text-4xl">
+        <h1 class="text-lg leading-[1.4] tracking-[-0.02em] sm:text-xl lg:text-2xl">
           <BrandWordmark />
         </h1>
       </div>
@@ -95,7 +95,7 @@ const lastWinner = computed(() => (store.lastWinner ? winnerConfig[store.lastWin
     <div
       v-if="showConnectionBanner"
       aria-live="polite"
-      class="mx-auto flex w-full max-w-[1600px] flex-wrap items-center justify-between gap-2 border-t border-bbp-border px-3 py-2 sm:px-4 lg:px-5 2xl:max-w-[1920px] min-[2560px]:max-w-[2400px]"
+      class="mx-auto flex w-full max-w-[1600px] flex-wrap items-center justify-between gap-2 border-t border-bbp-border px-3 py-1.5 sm:px-4 lg:px-5 2xl:max-w-[1920px] min-[2560px]:max-w-[2400px]"
     >
       <span class="min-w-0 text-xs font-semibold tracking-wider text-bbp-banker">
         SIN CONEXIÓN EN VIVO{{ store.streamError ? ` — ${store.streamError}` : '' }}

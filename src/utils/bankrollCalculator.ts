@@ -38,6 +38,38 @@ export interface BankrollInsufficientResult {
 
 export type BankrollResult = BankrollSufficientResult | BankrollInsufficientResult
 
+export interface RequiredCapitalResult {
+  baseBet: number
+  cyclesToSurvive: number
+  gale1: number
+  gale2: number
+  cycleLossCost: number
+  /** Capital exacto para soportar `cyclesToSurvive` ciclos perdidos con esta apuesta base. */
+  requiredCapital: number
+}
+
+/**
+ * Inverso de `calculateBankrollStrategy`: en vez de "tengo este saldo, ¿cuál
+ * es mi apuesta base?", responde "quiero apostar este monto, ¿cuánto capital
+ * necesito?". Devuelve `null` si la apuesta deseada no alcanza el mínimo del
+ * casino (redondeada siempre hacia abajo a múltiplos de `MIN_BET`).
+ */
+export function calculateRequiredCapital(
+  desiredBaseBet: number,
+  cyclesToSurvive: number,
+): RequiredCapitalResult | null {
+  const safeInput = Number.isFinite(desiredBaseBet) && desiredBaseBet > 0 ? desiredBaseBet : 0
+  const baseBet = roundDownToStep(safeInput, MIN_BET)
+  if (baseBet < MIN_BET) return null
+
+  const gale1 = baseBet * GALE_MULTIPLIERS.gale1
+  const gale2 = baseBet * GALE_MULTIPLIERS.gale2
+  const cycleLossCost = baseBet + gale1 + gale2
+  const requiredCapital = cycleLossCost * cyclesToSurvive
+
+  return { baseBet, cyclesToSurvive, gale1, gale2, cycleLossCost, requiredCapital }
+}
+
 export function calculateBankrollStrategy(
   balance: number,
   cyclesToSurvive: number,
