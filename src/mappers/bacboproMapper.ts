@@ -391,6 +391,12 @@ export function summaryToKpiItems(summary: ReportSummary, liveUptimeMs: number):
     { label: 'ALERTAS', value: String(summary.oficial.alertsSent), tone: 'yellow' },
     { label: 'PERDIDAS', value: String(summary.oficial.lost), tone: 'red' },
     { label: 'TIEMPO', value: formatUptime(liveUptimeMs), tone: 'mono' },
+    {
+      label: 'UNIDADES NETAS',
+      value: String(summary.oficial.netUnits),
+      tone:
+        summary.oficial.netUnits > 0 ? 'green' : summary.oficial.netUnits < 0 ? 'red' : 'yellow',
+    },
   ]
 }
 

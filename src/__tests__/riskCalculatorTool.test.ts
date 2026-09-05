@@ -66,7 +66,7 @@ describe('RiskCalculatorTool', () => {
 
   it('muestra el contexto del sistema con datos reales del store (no un snapshot fijo)', async () => {
     const { wrapper, store } = mountTool()
-    store.summary = { uptimeMs: 0, oficial: { won: 87, lost: 10, alertsSent: 5 } }
+    store.summary = { uptimeMs: 0, oficial: { won: 87, lost: 10, alertsSent: 5, netUnits: 17 } }
     await wrapper.vm.$nextTick()
 
     expect(wrapper.text()).toContain('89,69%')

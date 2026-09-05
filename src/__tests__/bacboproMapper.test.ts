@@ -199,10 +199,10 @@ describe('rollingToStatsBlock', () => {
 })
 
 describe('summaryToKpiItems', () => {
-  it('projects won, alertsSent, lost and uptime from the oficial channel', () => {
+  it('projects won, alertsSent, lost, uptime and netUnits from the oficial channel', () => {
     const summary: ReportSummary = {
       uptimeMs: 7385000,
-      oficial: { won: 8, lost: 2, alertsSent: 10 },
+      oficial: { won: 8, lost: 2, alertsSent: 10, netUnits: -6 },
     }
     const items = summaryToKpiItems(summary, summary.uptimeMs)
     expect(items).toEqual([
@@ -210,7 +210,35 @@ describe('summaryToKpiItems', () => {
       { label: 'ALERTAS', value: '10', tone: 'yellow' },
       { label: 'PERDIDAS', value: '2', tone: 'red' },
       { label: 'TIEMPO', value: '02:03:05', tone: 'mono' },
+      { label: 'UNIDADES NETAS', value: '-6', tone: 'red' },
     ])
+  })
+
+  it('uses green tone for netUnits when it is positive', () => {
+    const summary: ReportSummary = {
+      uptimeMs: 0,
+      oficial: { won: 8, lost: 1, alertsSent: 9, netUnits: 1 },
+    }
+    const items = summaryToKpiItems(summary, summary.uptimeMs)
+    expect(items).toContainEqual({ label: 'UNIDADES NETAS', value: '1', tone: 'green' })
+  })
+
+  it('uses yellow tone for netUnits when it is exactly zero', () => {
+    const summary: ReportSummary = {
+      uptimeMs: 0,
+      oficial: { won: 1, lost: 0, alertsSent: 1, netUnits: 0 },
+    }
+    const items = summaryToKpiItems(summary, summary.uptimeMs)
+    expect(items).toContainEqual({ label: 'UNIDADES NETAS', value: '0', tone: 'yellow' })
+  })
+
+  it('uses red tone for netUnits when it is negative', () => {
+    const summary: ReportSummary = {
+      uptimeMs: 0,
+      oficial: { won: 0, lost: 1, alertsSent: 1, netUnits: -7 },
+    }
+    const items = summaryToKpiItems(summary, summary.uptimeMs)
+    expect(items).toContainEqual({ label: 'UNIDADES NETAS', value: '-7', tone: 'red' })
   })
 })
 
@@ -218,7 +246,7 @@ describe('summaryToEffectivenessStats', () => {
   it('calcula operaciones totales y efectividad a partir del canal oficial', () => {
     const summary: ReportSummary = {
       uptimeMs: 0,
-      oficial: { won: 87, lost: 10, alertsSent: 120 },
+      oficial: { won: 87, lost: 10, alertsSent: 120, netUnits: 17 },
     }
     const stats = summaryToEffectivenessStats(summary)
     expect(stats.totalOperations).toBe(97)
@@ -228,7 +256,10 @@ describe('summaryToEffectivenessStats', () => {
   })
 
   it('nunca divide por cero: 0 operaciones da 0% de efectividad', () => {
-    const summary: ReportSummary = { uptimeMs: 0, oficial: { won: 0, lost: 0, alertsSent: 0 } }
+    const summary: ReportSummary = {
+      uptimeMs: 0,
+      oficial: { won: 0, lost: 0, alertsSent: 0, netUnits: 0 },
+    }
     const stats = summaryToEffectivenessStats(summary)
     expect(stats.totalOperations).toBe(0)
     expect(stats.effectivenessPct).toBe(0)

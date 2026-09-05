@@ -101,7 +101,7 @@ vi.mock('@/api/endpoints', () => ({
     Promise.resolve({
       data: {
         uptimeMs: 7385000,
-        oficial: { won: 8, lost: 2, alertsSent: 10 },
+        oficial: { won: 8, lost: 2, alertsSent: 10, netUnits: -6 },
       },
       requestId: 'r4',
     }),
@@ -239,9 +239,11 @@ describe('BacboproDashboard (integración API)', () => {
     expect(wrapper.text()).toContain('ALERTAS')
     expect(wrapper.text()).toContain('PERDIDAS')
     expect(wrapper.text()).toContain('TIEMPO')
+    expect(wrapper.text()).toContain('UNIDADES NETAS')
     expect(wrapper.text()).toContain('8')
     expect(wrapper.text()).toContain('10')
     expect(wrapper.text()).toContain('2')
+    expect(wrapper.text()).toContain('-6')
     expect(wrapper.text()).toContain('02:03:05')
   })
 

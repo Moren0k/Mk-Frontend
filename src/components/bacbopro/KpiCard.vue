@@ -9,10 +9,16 @@ defineProps<Props>()
 </script>
 
 <template>
-  <div class="min-w-0 bbp-elevation-1 rounded-lg border border-bbp-border bg-bbp-panel p-5 text-center sm:p-6">
-    <p class="break-words text-xs font-bold tracking-[0.15em] text-gray-400">{{ item.label }}</p>
+  <div
+    class="flex min-w-0 flex-col items-center justify-center gap-1 overflow-hidden bbp-elevation-1 rounded-lg border border-bbp-border bg-bbp-panel px-2 py-3 text-center sm:gap-1.5 sm:px-3 sm:py-4"
+  >
     <p
-      class="mt-3 text-2xl font-bold"
+      class="w-full break-words text-[0.6rem] font-bold leading-snug tracking-wide text-gray-400 sm:text-[0.7rem] sm:tracking-[0.08em]"
+    >
+      {{ item.label }}
+    </p>
+    <p
+      class="w-full truncate text-lg font-bold leading-none sm:text-xl"
       :class="{
         'text-bbp-tie [text-shadow:0_0_10px_currentColor]': item.tone === 'yellow',
         'text-bbp-banker [text-shadow:0_0_10px_currentColor]': item.tone === 'red',

@@ -84,7 +84,7 @@ describe('bacboproStore', () => {
     vi.mocked(endpoints.getReportsSummary).mockResolvedValue({
       data: {
         uptimeMs: 7385000,
-        oficial: { won: 8, lost: 2, alertsSent: 10 },
+        oficial: { won: 8, lost: 2, alertsSent: 10, netUnits: -6 },
       },
       requestId: 'r4',
     })
@@ -479,7 +479,7 @@ describe('bacboproStore', () => {
     vi.mocked(endpoints.getReportsSummary).mockResolvedValueOnce({
       data: {
         uptimeMs: 9000000,
-        oficial: { won: 12, lost: 1, alertsSent: 13 },
+        oficial: { won: 12, lost: 1, alertsSent: 13, netUnits: 5 },
       },
       requestId: 'r11',
     })
@@ -490,6 +490,7 @@ describe('bacboproStore', () => {
       { label: 'ALERTAS', value: '13', tone: 'yellow' },
       { label: 'PERDIDAS', value: '1', tone: 'red' },
       { label: 'TIEMPO', value: '02:30:00', tone: 'mono' },
+      { label: 'UNIDADES NETAS', value: '5', tone: 'green' },
     ])
   })
 

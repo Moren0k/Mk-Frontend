@@ -24,6 +24,7 @@ const EMPTY_KPI_ITEMS: KpiItem[] = [
   { label: 'ALERTAS', value: '—', tone: 'yellow' },
   { label: 'PERDIDAS', value: '—', tone: 'red' },
   { label: 'TIEMPO', value: '—', tone: 'mono' },
+  { label: 'UNIDADES NETAS', value: '—', tone: 'mono' },
 ]
 
 const LOADING_KPI_ITEMS: KpiItem[] = [
@@ -31,6 +32,7 @@ const LOADING_KPI_ITEMS: KpiItem[] = [
   { label: 'ALERTAS', value: '…', tone: 'yellow' },
   { label: 'PERDIDAS', value: '…', tone: 'red' },
   { label: 'TIEMPO', value: '…', tone: 'mono' },
+  { label: 'UNIDADES NETAS', value: '…', tone: 'mono' },
 ]
 
 const kpiItems = computed<KpiItem[]>(() => {

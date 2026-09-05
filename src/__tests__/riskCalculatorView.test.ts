@@ -24,7 +24,7 @@ vi.mock('@/api/endpoints', () => ({
   ),
   getReportsSummary: vi.fn(() =>
     Promise.resolve({
-      data: { uptimeMs: 0, oficial: { won: 87, lost: 10, alertsSent: 5 } },
+      data: { uptimeMs: 0, oficial: { won: 87, lost: 10, alertsSent: 5, netUnits: 17 } },
       requestId: 'r4',
     }),
   ),

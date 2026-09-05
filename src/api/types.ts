@@ -102,6 +102,14 @@ export interface ChannelReportSummary {
   won: number
   lost: number
   alertsSent: number
+  /**
+   * Unidades reales de ganancia/pérdida del canal oficial: `won - lost * 7`
+   * (cada operación sigue una martingala de 3 fases —1, 2, 4—, así que una
+   * pérdida completa cuesta 7 unidades apostadas, mientras que una victoria
+   * siempre cierra dejando 1 unidad neta, sin importar en qué fase ganó).
+   * Puede ser negativo.
+   */
+  netUnits: number
 }
 
 /**
